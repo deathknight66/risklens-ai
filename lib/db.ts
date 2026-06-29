@@ -87,11 +87,14 @@ db.exec(`
     FOREIGN KEY(incident_id) REFERENCES incidents(id)
   );
 
+  DROP TABLE IF EXISTS policies;
   CREATE TABLE IF NOT EXISTS policies (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    condition_logic TEXT NOT NULL,
-    action_type TEXT NOT NULL,
+    conditions_json TEXT NOT NULL,
+    actions_json TEXT NOT NULL,
+    cooldown_minutes INTEGER NOT NULL DEFAULT 60,
+    last_triggered_at TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TEXT NOT NULL
   );
