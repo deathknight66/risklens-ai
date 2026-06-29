@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 
 const sidebarItems = [
   { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
+  { label: 'Executive Analytics', icon: BarChart3, href: '/dashboard/analytics' },
   { label: 'Threats', icon: ShieldAlert, href: '/dashboard/threats' },
   { label: 'Investigation', icon: Search, href: '/dashboard/investigation' },
   { label: 'Business Impact', icon: BarChart3, href: '/dashboard/impact' },
