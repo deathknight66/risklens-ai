@@ -602,3 +602,44 @@ If the attacker pivots from the compromised service account to the customer data
 The cost of prevention ($35,000) is **143x less** than the potential breach cost. Immediate containment is strongly advised.`,
   },
 ]
+
+// ===================== PHASE 3 PREDICTIVE DATA =====================
+
+export const executiveDecision = {
+  recommendedAction: 'Isolate Payment API',
+  projectedLossAvoided: 142000,
+  confidence: 91,
+  timeToImpact: '18 minutes', // Time to full propagation
+  exposureSurface: {
+    current: 64,
+    projected: 38
+  }
+}
+
+export const riskForecast = {
+  trend: 'up',
+  likelihoodChange: '+18%',
+  timeframe: 'Next 7 days',
+  primaryVector: 'Credential Stuffing'
+}
+
+export const insuranceReadiness = {
+  score: 78,
+  status: 'Eligible',
+  premiumImpact: '-12%',
+  gaps: ['MFA enforcement gap', 'Unpatched external assets']
+}
+
+export const assetCriticality = [
+  { name: 'Payment Gateway', score: 99, type: 'api', status: 'critical' },
+  { name: 'Core ERP', score: 95, type: 'server', status: 'critical' },
+  { name: 'Customer DB', score: 92, type: 'database', status: 'high' },
+  { name: 'HR System', score: 61, type: 'server', status: 'medium' },
+  { name: 'Marketing Site', score: 34, type: 'server', status: 'low' }
+]
+
+export const scenarioComparisons = [
+  { scenario: 'No Action', loss: 420000, downtime: '8h', assetsHit: 7, actionType: 'danger' },
+  { scenario: 'Rotate Credentials', loss: 150000, downtime: '2h', assetsHit: 3, actionType: 'warning' },
+  { scenario: 'Contain Endpoint Now', loss: 90000, downtime: '1.5h', assetsHit: 2, actionType: 'success' },
+]

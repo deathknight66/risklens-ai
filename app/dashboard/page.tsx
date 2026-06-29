@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Zap,
+  Play,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -44,6 +46,10 @@ import {
   threatAlerts,
   attackSourcesData,
   systemStatuses,
+  executiveDecision,
+  riskForecast,
+  insuranceReadiness,
+  assetCriticality,
 } from '@/lib/mock-data'
 
 /* ================================================================
@@ -298,6 +304,67 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-8">
+      {/* ============================================
+          Executive Decision Panel
+          ============================================ */}
+      <div 
+        className="glass bg-slate-900 rounded-xl p-6 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] relative overflow-hidden" 
+        style={{ transform: 'translateZ(0)' }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-transparent to-blue-500/10 animate-pulse pointer-events-none" />
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-lg font-bold text-slate-100 uppercase tracking-wider">AI Predictive Engine</h2>
+            </div>
+            <p className="text-2xl font-bold text-slate-100 mb-2">
+              Recommended: <span className="text-cyan-400">{executiveDecision.recommendedAction}</span>
+            </p>
+            <div className="flex items-center gap-5 text-sm text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                Impact in: <strong className="text-red-400">{executiveDecision.timeToImpact}</strong>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-4 h-4" />
+                Confidence: <strong className="text-emerald-400">{executiveDecision.confidence}%</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 min-w-[280px]">
+            <div className="glass bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 flex-1">
+              <p className="text-xs text-slate-400 mb-1">Projected Loss Avoided</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                ${executiveDecision.projectedLossAvoided.toLocaleString()}
+              </p>
+            </div>
+            <div className="glass bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 flex-1">
+              <p className="text-xs text-slate-400 mb-1">Exposure Surface Delta</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-slate-300">{executiveDecision.exposureSurface.current}</span>
+                <ArrowDownRight className="w-5 h-5 text-emerald-400" />
+                <span className="text-xl font-bold text-emerald-400">{executiveDecision.exposureSurface.projected}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 min-w-[200px]">
+            <button className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 px-4 rounded-lg transition-colors">
+              <Play className="w-4 h-4" fill="currentColor" />
+              Execute
+            </button>
+            <button className="w-full flex items-center justify-center gap-2 glass hover:bg-slate-800 text-slate-300 font-medium py-3 px-4 rounded-lg transition-colors border border-slate-600">
+              <Activity className="w-4 h-4" />
+              Simulate Alternative
+            </button>
+          </div>
+
+        </div>
+      </div>
+
       {/* ============================================
           Header Row
           ============================================ */}
@@ -713,6 +780,78 @@ export default function DashboardPage() {
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ============================================
+          Predictive Insights Row
+          ============================================ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Risk Trend Forecast */}
+        <div className="glass rounded-xl p-6 animate-slide-up" style={{ animationDelay: '750ms', animationFillMode: 'both' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-300">Risk Trend Forecast</h3>
+            <TrendingUp className="w-5 h-5 text-orange-400" />
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-3xl font-bold text-orange-400">{riskForecast.likelihoodChange}</span>
+              <span className="text-sm text-slate-400">likelihood</span>
+            </div>
+            <p className="text-sm text-slate-300">{riskForecast.timeframe}</p>
+            <div className="mt-5 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <p className="text-xs text-orange-300/80">Primary Vector:</p>
+              <p className="text-sm font-semibold text-orange-400 mt-0.5">{riskForecast.primaryVector}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Insurance Readiness */}
+        <div className="glass rounded-xl p-6 animate-slide-up" style={{ animationDelay: '800ms', animationFillMode: 'both' }}>
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-sm font-semibold text-slate-300">Insurance Readiness</h3>
+            <Shield className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div className="flex items-center gap-5 mt-2">
+            <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(51,65,85,0.4)" strokeWidth="3" />
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#22c55e" strokeWidth="3" strokeDasharray={`${insuranceReadiness.score}, 100`} />
+              </svg>
+              <span className="absolute text-lg font-bold text-slate-100">{insuranceReadiness.score}</span>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-emerald-400">{insuranceReadiness.status}</p>
+              <p className="text-sm text-slate-400 mt-0.5">Premium: {insuranceReadiness.premiumImpact}</p>
+            </div>
+          </div>
+          <div className="mt-5 space-y-2">
+            {insuranceReadiness.gaps.map((gap, i) => (
+              <p key={i} className="text-xs text-slate-300 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                {gap}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        {/* Asset Criticality Score */}
+        <div className="glass rounded-xl p-6 animate-slide-up" style={{ animationDelay: '850ms', animationFillMode: 'both' }}>
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-sm font-semibold text-slate-300">Asset Criticality</h3>
+            <Server className="w-5 h-5 text-blue-400" />
+          </div>
+          <div className="space-y-4">
+            {assetCriticality.slice(0, 4).map((asset, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn("w-2 h-2 rounded-full", asset.status === 'critical' ? 'bg-red-500' : asset.status === 'high' ? 'bg-orange-500' : asset.status === 'medium' ? 'bg-blue-500' : 'bg-slate-500')} />
+                  <span className="text-sm text-slate-200">{asset.name}</span>
+                </div>
+                <span className="text-sm font-bold text-slate-100">{asset.score}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

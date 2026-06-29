@@ -14,7 +14,7 @@ import {
   Zap,
   Shield,
 } from "lucide-react";
-import { businessImpacts, RiskPropagationNode } from "@/lib/mock-data";
+import { businessImpacts, RiskPropagationNode, scenarioComparisons } from "@/lib/mock-data";
 
 const PropagationNode = ({ node }: { node: RiskPropagationNode }) => {
   const getStatusStyle = (status: string) => {
@@ -88,6 +88,7 @@ const PropagationNode = ({ node }: { node: RiskPropagationNode }) => {
 
 export default function ImpactPage() {
   const [activeScenario, setActiveScenario] = useState(businessImpacts[0]);
+  const [activeSimulation, setActiveSimulation] = useState<any>(null);
 
   return (
     <div className="space-y-6 animate-fade-in p-2">
@@ -101,7 +102,7 @@ export default function ImpactPage() {
           {businessImpacts.map((scenario, idx) => (
             <button
               key={idx}
-              onClick={() => setActiveScenario(scenario)}
+              onClick={() => { setActiveScenario(scenario); setActiveSimulation(null); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 activeScenario.category === scenario.category 
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]' 
@@ -178,7 +179,7 @@ export default function ImpactPage() {
                 <div className="flex justify-between items-end">
                   <span className="text-sm text-slate-300 font-medium uppercase tracking-wider">Total Estimated</span>
                   <span className="text-3xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)] font-mono">
-                    ${activeScenario.lossEngine.totalEstimated.toLocaleString()}
+                    ${(activeSimulation ? activeSimulation.loss : activeScenario.lossEngine.totalEstimated).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -220,6 +221,56 @@ export default function ImpactPage() {
             </div>
           </div>
           
+          {/* What-If Simulator */}
+          <div className="glass rounded-2xl p-6 border border-slate-700/50 shadow-2xl relative overflow-hidden group">
+             <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+             <h3 className="text-lg font-semibold text-slate-100 mb-5 flex items-center gap-2 relative z-10">
+              <Zap size={20} className="text-purple-400" />
+              What-If Simulator
+            </h3>
+            
+            <div className="relative z-10 w-full overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700/80 text-slate-400 uppercase tracking-wider text-xs">
+                    <th className="pb-3 font-medium">Scenario</th>
+                    <th className="pb-3 font-medium text-right">Loss</th>
+                    <th className="pb-3 font-medium text-right">Downtime</th>
+                    <th className="pb-3 font-medium text-center">Assets Hit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {scenarioComparisons.map((sim, idx) => {
+                    const isActive = activeSimulation ? activeSimulation.scenario === sim.scenario : false;
+                    return (
+                      <tr 
+                        key={idx} 
+                        onClick={() => setActiveSimulation(sim)}
+                        className={`cursor-pointer transition-all hover:bg-slate-800/40 ${
+                          isActive ? 'bg-cyan-500/10' : ''
+                        }`}
+                      >
+                        <td className="py-3 px-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-transparent'}`}></span>
+                            <span className={`font-medium ${isActive ? 'text-cyan-300' : 'text-slate-300'}`}>
+                              {sim.scenario}
+                            </span>
+                          </div>
+                        </td>
+                        <td className={`py-3 px-1 text-right font-mono ${isActive ? 'text-red-400 font-bold' : 'text-slate-300'}`}>
+                          ${sim.loss.toLocaleString()}
+                        </td>
+                        <td className={`py-3 px-1 text-right ${isActive ? 'text-slate-200' : 'text-slate-400'}`}>{sim.downtime}</td>
+                        <td className={`py-3 px-1 text-center font-mono ${isActive ? 'text-slate-200' : 'text-slate-400'}`}>{sim.assetsHit}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </div>
       
