@@ -664,7 +664,7 @@ export const autonomousActions = [
     target: "payment-api-prod",
     source: "Kubernetes Cluster",
     status: "Pending Approval",
-    riskReduction: 84,
+    riskReduction: 73,
     projectedLossAvoided: 280000,
     rollbackAvailable: true,
     executedAt: null
@@ -687,12 +687,12 @@ export const actionSimulations = {
     estimatedDowntimeMinutes: 5,
     financialImpact: 10000,
     affectedServices: 3,
-    riskReduction: 84,
+    riskReduction: 73,
     blastRadiusReduction: 67
   },
   block_external_ip: {
     estimatedDowntimeMinutes: 0,
-    financialImpact: 0,
+    financialImpact: 1200,
     affectedServices: 0,
     riskReduction: 72,
     blastRadiusReduction: 54
@@ -712,14 +712,17 @@ export const executionLogs = [
   "[14:22:03] Applying firewall rule...",
   "[14:22:04] Blocking IP 185.220.101.42...",
   "[14:22:05] Policy committed successfully.",
-  "[14:22:06] Blast radius reduced by 54%."
+  "[14:22:06] Blast radius reduced by 54%.",
+  "[14:22:07] Verifying packet drop rate...",
+  "[14:22:08] Confirmed malicious source blocked."
 ];
 
 export const rollbackLogs = [
   "[14:40:11] Reverting firewall policy...",
   "[14:40:12] Restoring API access...",
   "[14:40:13] Dependency checks passed.",
-  "[14:40:14] Rollback completed successfully."
+  "[14:40:14] Rollback completed successfully.",
+  "[14:40:15] Post-rollback integrity validated."
 ];
 
 export const approvalWorkflow = [
@@ -733,7 +736,7 @@ export const intrusionEvents = [
   {
     dataset: "CIC-IDS2017",
     attackType: "Brute Force",
-    sourceIP: "172.16.0.5",
+    sourceIP: "185.220.101.42",
     targetAsset: "vpn-gateway-prod",
     timestamp: "2026-06-29T02:11:00Z",
     packets: 442,
@@ -757,6 +760,7 @@ export const idsAlerts = [
     sourceIP: "185.220.101.42",
     targetIP: "10.0.2.11",
     protocol: "TCP",
+    mitreTechnique: "T1046",
     severity: 4
   },
   {
@@ -765,6 +769,7 @@ export const idsAlerts = [
     sourceIP: "91.240.118.172",
     targetIP: "10.0.3.21",
     protocol: "HTTP",
+    mitreTechnique: "T1190",
     severity: 5
   }
 ];
@@ -778,7 +783,9 @@ export const zeekConnections = [
     service: "http",
     duration: 12.3,
     bytes_out: 92381,
-    bytes_in: 1822
+    bytes_in: 1822,
+    conn_state: "SF",
+    history: "ShADadF"
   }
 ];
 
@@ -786,22 +793,23 @@ export const mitreTimeline = [
   { technique: "T1566", stage: "Phishing" },
   { technique: "T1078", stage: "Valid Accounts" },
   { technique: "T1021", stage: "Remote Services" },
+  { technique: "T1059", stage: "Command and Scripting Interpreter" },
   { technique: "T1486", stage: "Data Encrypted for Impact" }
 ];
 
 export const cveFeed = [
   {
-    cve: "CVE-2025-1974",
-    product: "Apache HTTP Server",
+    cve: "CVE-2021-44228",
+    product: "Apache Log4j",
     severity: "Critical",
-    cvss: 9.8,
+    cvss: 10.0,
     exploited: true
   },
   {
-    cve: "CVE-2026-10211",
+    cve: "CVE-2024-6387",
     product: "OpenSSH",
     severity: "High",
-    cvss: 8.4,
+    cvss: 8.1,
     exploited: false
   }
 ];
