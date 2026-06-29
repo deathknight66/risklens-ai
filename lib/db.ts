@@ -127,6 +127,22 @@ db.exec(`
     login_at TEXT NOT NULL,
     status TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id TEXT PRIMARY KEY,
+    key_hash TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_used_at TEXT,
+    revoked_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS rate_limits (
+    key_hash TEXT PRIMARY KEY,
+    count INTEGER NOT NULL DEFAULT 0,
+    reset_at INTEGER NOT NULL
+  );
 `);
 
 // Seed Mock Users
@@ -140,6 +156,15 @@ if (checkUsers.count === 0) {
   insertUser.run('usr_analyst', 'analyst@risklens.local', defaultHash, 'SOC Analyst', now);
   insertUser.run('usr_board', 'board@risklens.local', defaultHash, 'Board Member', now);
   console.log('[DB] Mock users seeded successfully.');
+}
+
+// Seed Mock API Key for Ingestion
+const checkApiKeys = db.prepare('SELECT COUNT(*) as count FROM api_keys').get() as any;
+if (checkApiKeys.count === 0) {
+  const insertKey = db.prepare('INSERT INTO api_keys (id, key_hash, scope, created_by, created_at) VALUES (?, ?, ?, ?, ?)');
+  // We'll use a plain text key "demo_ingest_key_2026" for prototype simplicity, but in a real app this must be hashed.
+  insertKey.run('key_demo', 'demo_ingest_key_2026', 'ingest_only', 'usr_admin', new Date().toISOString());
+  console.log('[DB] Mock API key seeded successfully.');
 }
 
 export default db;
