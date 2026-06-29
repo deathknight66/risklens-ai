@@ -17,18 +17,20 @@ import {
   Menu,
   Zap,
   Database,
+  User,
+  LogOut
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useSession, signOut } from 'next-auth/react'
 
 const sidebarItems = [
-  { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Executive Analytics', icon: BarChart3, href: '/dashboard/analytics' },
-  { label: 'Threats', icon: ShieldAlert, href: '/dashboard/threats' },
-  { label: 'Investigation', icon: Search, href: '/dashboard/investigation' },
-  { label: 'Business Impact', icon: BarChart3, href: '/dashboard/impact' },
-  { label: 'Actions', icon: Zap, href: '/dashboard/actions' },
-  { label: 'Ingestion', icon: Database, href: '/dashboard/ingestion' },
-  { label: 'Reports', icon: FileText, href: '/dashboard/reports' },
+  { label: 'SOC View', icon: LayoutDashboard, href: '/dashboard/soc', roles: ['Org Admin', 'SOC Analyst'] },
+  { label: 'Board View', icon: BarChart3, href: '/dashboard/board', roles: ['Org Admin', 'Board Member'] },
+  { label: 'Threats', icon: ShieldAlert, href: '/dashboard/threats', roles: ['Org Admin', 'SOC Analyst'] },
+  { label: 'Investigation', icon: Search, href: '/dashboard/investigation', roles: ['Org Admin', 'SOC Analyst'] },
+  { label: 'Actions', icon: Zap, href: '/dashboard/actions', roles: ['Org Admin', 'SOC Analyst'] },
+  { label: 'Ingestion', icon: Database, href: '/dashboard/ingestion', roles: ['Org Admin', 'SOC Analyst'] },
+  { label: 'Reports', icon: FileText, href: '/dashboard/reports', roles: ['Org Admin', 'SOC Analyst', 'Board Member'] },
 ]
 
 export default function DashboardLayout({
@@ -38,6 +40,8 @@ export default function DashboardLayout({
 }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role as string || 'Guest'
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
@@ -79,53 +83,24 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-2">
           {sidebarItems.map((item) => {
-            const Icon = item.icon
+            if (item.roles && !item.roles.includes(role)) return null;
+            
             const active = isActive(item.href)
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg',
-                  'transition-all duration-200 group relative',
+                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group',
                   active
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent',
-                  !sidebarExpanded && 'justify-center px-0'
+                    ? 'bg-indigo-500/10 text-indigo-400 font-medium'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 )}
               >
-                <Icon
-                  className={cn(
-                    'w-5 h-5 shrink-0 transition-colors duration-200',
-                    active
-                      ? 'text-cyan-400'
-                      : 'text-slate-500 group-hover:text-slate-300'
-                  )}
-                />
-                {sidebarExpanded && (
-                  <span className="text-sm font-medium whitespace-nowrap overflow-hidden">
-                    {item.label}
-                  </span>
-                )}
-                {active && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-cyan-400 rounded-r-full" />
-                )}
-                {/* Tooltip for collapsed state */}
-                {!sidebarExpanded && (
-                  <div
-                    className={cn(
-                      'absolute left-full ml-3 px-2.5 py-1.5 rounded-md',
-                      'bg-slate-800 text-slate-200 text-xs font-medium',
-                      'whitespace-nowrap shadow-xl border border-slate-700/50',
-                      'opacity-0 invisible group-hover:opacity-100 group-hover:visible',
-                      'transition-all duration-200 z-50 pointer-events-none'
-                    )}
-                  >
-                    {item.label}
-                  </div>
-                )}
+                <item.icon className={cn('w-5 h-5 flex-shrink-0', active ? 'text-indigo-400' : 'group-hover:text-slate-200')} />
+                {sidebarExpanded && <span>{item.label}</span>}
               </Link>
             )
           })}
@@ -226,14 +201,22 @@ export default function DashboardLayout({
 
           {/* Right: notifications + avatar */}
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <button className="relative p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all duration-200">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-[#0a0e1a]">
-                5
-              </span>
-            </button>
-
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
+                <User className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-semibold text-slate-300">{role}</span>
+              </div>
+              <button onClick={() => signOut()} className="p-2 text-slate-400 hover:text-rose-400 transition-colors">
+                <LogOut className="w-5 h-5" />
+              </button>
+              <button className="p-2 text-slate-400 hover:text-white transition-colors relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full"></span>
+              </button>
+              <button className="p-2 text-slate-400 hover:text-white transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
             {/* Divider */}
             <div className="w-px h-8 bg-slate-700/50" />
 

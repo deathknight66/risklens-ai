@@ -110,6 +110,36 @@ db.exec(`
     integrity_hash TEXT NOT NULL,
     risk_rating TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS auth_logs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    ip TEXT,
+    user_agent TEXT,
+    login_at TEXT NOT NULL,
+    status TEXT NOT NULL
+  );
 `);
+
+// Seed Mock Users
+const checkUsers = db.prepare('SELECT COUNT(*) as count FROM users').get() as any;
+if (checkUsers.count === 0) {
+  const defaultHash = '$2b$10$UQhO1zf.kaVjRnNlMdf/2OgDrF/NsDoYD83XqzSTrBbii6sNviD4C'; // password123
+  const now = new Date().toISOString();
+  
+  const insertUser = db.prepare('INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)');
+  insertUser.run('usr_admin', 'admin@risklens.local', defaultHash, 'Org Admin', now);
+  insertUser.run('usr_analyst', 'analyst@risklens.local', defaultHash, 'SOC Analyst', now);
+  insertUser.run('usr_board', 'board@risklens.local', defaultHash, 'Board Member', now);
+  console.log('[DB] Mock users seeded successfully.');
+}
 
 export default db;
