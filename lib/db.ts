@@ -11,6 +11,8 @@ db.pragma('journal_mode = WAL');
 
 // Initialize schema
 db.exec(`
+  PRAGMA journal_mode = WAL;
+
   CREATE TABLE IF NOT EXISTS logs (
     id TEXT PRIMARY KEY,
     timestamp TEXT NOT NULL,
@@ -62,16 +64,36 @@ db.exec(`
     FOREIGN KEY(alert_id) REFERENCES alerts(id)
   );
 
+  DROP TABLE IF EXISTS actions;
+
   CREATE TABLE IF NOT EXISTS actions (
     id TEXT PRIMARY KEY,
-    action TEXT NOT NULL,
+    incident_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
     target TEXT NOT NULL,
-    source TEXT NOT NULL,
     status TEXT NOT NULL,
-    risk_reduction INTEGER,
-    projected_loss_avoided INTEGER,
-    rollback_available INTEGER DEFAULT 1,
-    executed_at TEXT
+    approved_by TEXT,
+    reason TEXT,
+    decision_confidence REAL,
+    simulation_payload TEXT,
+    rollback_payload TEXT,
+    rollback_status TEXT,
+    execution_hash TEXT,
+    rollback_expires_at TEXT,
+    executed_at TEXT,
+    rolled_back_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(incident_id) REFERENCES incidents(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS policies (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    condition_logic TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
   );
 `);
 

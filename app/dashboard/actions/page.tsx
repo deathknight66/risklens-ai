@@ -13,369 +13,288 @@ import {
   AlertTriangle,
   Clock,
   Activity,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  Eye,
+  Check,
+  X
 } from 'lucide-react'
-import {
-  autonomousActions,
-  actionSimulations,
-  executionLogs,
-  rollbackLogs,
-  approvalWorkflow
-} from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 
 export default function ActionsPage() {
+  const [actions, setActions] = useState<any[]>([])
   const [selectedAction, setSelectedAction] = useState<any>(null)
-  const [modalStep, setModalStep] = useState(0) // 0: Preview, 1: Approval, 2: Executing, 3: Completed, 4: Rollback Executing, 5: Rollback Completed
+  const [isSimulating, setIsSimulating] = useState(false)
+  const [modalStep, setModalStep] = useState<"idle" | "simulating" | "executing" | "success" | "failed">("idle")
   const [terminalLogs, setTerminalLogs] = useState<string[]>([])
-  
-  // Terminal animation effect
+  const [rollbackStep, setRollbackStep] = useState<"idle" | "executing" | "success" | "failed">("idle")
+
+  const fetchActions = async () => {
+    try {
+      const res = await fetch('/api/actions')
+      const data = await res.json()
+      if (data.success) {
+        setActions(data.actions)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   useEffect(() => {
-    if (modalStep === 2) {
-      setTerminalLogs([])
-      let i = 0
-      const timer = setInterval(() => {
-        if (i < executionLogs.length) {
-          setTerminalLogs(prev => [...prev, executionLogs[i]])
-          i++
-        } else {
-          clearInterval(timer)
-          setTimeout(() => setModalStep(3), 1000)
-        }
-      }, 800)
-      return () => clearInterval(timer)
-    }
+    fetchActions()
+    const interval = setInterval(fetchActions, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleApproveAndExecute = async (actionId: string) => {
+    setModalStep("executing")
+    setTerminalLogs(["Approving action...", "Sending request to Action Connector..."])
     
-    // Rollback animation
-    if (modalStep === 4) {
-      setTerminalLogs([])
-      let i = 0
-      const timer = setInterval(() => {
-        if (i < rollbackLogs.length) {
-          setTerminalLogs(prev => [...prev, rollbackLogs[i]])
-          i++
-        } else {
-          clearInterval(timer)
-          setTimeout(() => setModalStep(5), 1000)
-        }
-      }, 800)
-      return () => clearInterval(timer)
+    try {
+      const res = await fetch('/api/actions/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, approvedBy: 'SOC Analyst (Admin)' })
+      })
+      const data = await res.json()
+      
+      if (data.success) {
+        setTerminalLogs(prev => [...prev, ...data.response.logs, "Execution Successful."])
+        setModalStep("success")
+      } else {
+        setTerminalLogs(prev => [...prev, `ERROR: ${data.error}`])
+        setModalStep("failed")
+      }
+      fetchActions()
+    } catch (err) {
+      setTerminalLogs(prev => [...prev, `NETWORK ERROR`])
+      setModalStep("failed")
     }
-  }, [modalStep])
-
-  const openActionModal = (action: any) => {
-    setSelectedAction(action)
-    setModalStep(0)
   }
 
-  const handleRollback = (action: any) => {
-    setSelectedAction(action)
-    setModalStep(4) // Start rollback sequence
+  const handleRollback = async (actionId: string) => {
+    setRollbackStep("executing")
+    setTerminalLogs(["Initiating rollback sequence...", "Contacting connector..."])
+    
+    try {
+      const res = await fetch('/api/actions/rollback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId })
+      })
+      const data = await res.json()
+      
+      if (data.success) {
+        setTerminalLogs(prev => [...prev, ...data.response.logs, "Rollback Successful."])
+        setRollbackStep("success")
+      } else {
+        setTerminalLogs(prev => [...prev, `ERROR: ${data.error}`])
+        setRollbackStep("failed")
+      }
+      fetchActions()
+    } catch (err) {
+      setTerminalLogs(prev => [...prev, `NETWORK ERROR`])
+      setRollbackStep("failed")
+    }
   }
 
-  const renderModal = () => {
-    if (!selectedAction) return null
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Awaiting Approval': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      case 'Executing': return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
+      case 'Executed': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+      case 'Rolled Back': return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+      case 'Failed': return 'text-red-400 bg-red-500/10 border-red-500/20';
+      default: return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+    }
+  }
 
-    // For demo purposes, we will mock the simulation lookup
-    const simulation = actionSimulations.isolate_payment_api 
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div className="glass-strong rounded-2xl border border-slate-700/60 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-          
-          {/* Modal Header */}
-          <div className="p-5 border-b border-slate-700/50 flex items-center justify-between bg-slate-900/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-                <Zap className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-100">{selectedAction.action}</h3>
-                <p className="text-sm text-slate-400 font-mono mt-0.5">Target: {selectedAction.target}</p>
+  const renderSimulationPayload = (payloadStr: string | null) => {
+    if (!payloadStr) return null;
+    try {
+      const payload = JSON.parse(payloadStr);
+      return (
+        <div className="mt-4 p-4 rounded-lg bg-slate-900 border border-slate-700">
+          <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-cyan-400" /> Blast Radius Simulation
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-slate-500">Projected Downtime</p>
+              <p className="text-sm font-bold text-slate-200">{payload.projectedDowntime}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Blast Radius Score</p>
+              <p className="text-sm font-bold text-orange-400">{payload.blastRadius} / 10</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-xs text-slate-500">Affected Systems</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {payload.affectedSystems?.map((sys: string, i: number) => (
+                  <span key={i} className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">{sys}</span>
+                ))}
               </div>
             </div>
-            <button 
-              onClick={() => setSelectedAction(null)}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors"
-            >
-              ×
-            </button>
-          </div>
-
-          {/* Modal Body */}
-          <div className="p-6 overflow-y-auto">
-            {/* Steps Progress */}
-            <div className="flex items-center justify-between mb-8 relative">
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-800 -z-10"></div>
-              {[
-                { label: 'Simulation', step: 0 },
-                { label: 'Approval', step: 1 },
-                { label: 'Execution', step: 2 },
-                { label: 'Verified', step: 3 }
-              ].map((s, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 bg-slate-900 px-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
-                    modalStep > s.step || modalStep === 4 || modalStep === 5 ? 'bg-cyan-500 border-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.5)]' :
-                    modalStep === s.step ? 'bg-slate-800 border-cyan-400 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse' :
-                    'bg-slate-900 border-slate-700 text-slate-500'
-                  }`}>
-                    {modalStep > s.step || modalStep === 4 || modalStep === 5 ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-                  </div>
-                  <span className={`text-xs font-medium ${modalStep >= s.step || modalStep >= 4 ? 'text-slate-200' : 'text-slate-500'}`}>{s.label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Step 0: Simulation */}
-            {modalStep === 0 && (
-              <div className="space-y-6 animate-slide-up">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                    <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-semibold">Loss Avoided</p>
-                    <p className="text-2xl font-bold text-green-400">${selectedAction.projectedLossAvoided.toLocaleString()}</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                    <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-semibold">Downtime</p>
-                    <p className="text-2xl font-bold text-amber-400">{simulation.estimatedDowntimeMinutes} min</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                    <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-semibold">Risk Reduction</p>
-                    <p className="text-2xl font-bold text-cyan-400">{simulation.riskReduction}%</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                    <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-semibold">Confidence</p>
-                    <p className="text-2xl font-bold text-blue-400">91%</p>
-                  </div>
-                </div>
-                
-                <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                  <h4 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
-                    <Activity className="w-4 h-4" /> Business Impact Prediction
-                  </h4>
-                  <p className="text-sm text-slate-300 leading-relaxed">
-                    Executing this action will temporarily disrupt <strong>{simulation.affectedServices} services</strong>, causing an estimated financial friction of <strong>${simulation.financialImpact.toLocaleString()}</strong>. However, it completely halts propagation, reducing the overall blast radius by <strong>{simulation.blastRadiusReduction}%</strong>.
-                  </p>
-                </div>
-                
-                <button 
-                  onClick={() => setModalStep(1)}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2"
-                >
-                  Proceed to Approval <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            {/* Step 1: Approval */}
-            {modalStep === 1 && (
-              <div className="space-y-4 animate-slide-up">
-                <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-                  {approvalWorkflow.map((step, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-4 border-b border-slate-800 last:border-0">
-                      <div className="flex items-center gap-3">
-                        {step.status === 'Completed' ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        ) : step.status === 'Waiting' ? (
-                          <div className="w-5 h-5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-                        ) : (
-                          <Lock className="w-5 h-5 text-slate-600" />
-                        )}
-                        <span className={`text-sm font-medium ${step.status === 'Completed' ? 'text-slate-200' : 'text-slate-400'}`}>
-                          {step.stage}
-                        </span>
-                      </div>
-                      <span className={cn(
-                        "text-xs px-2.5 py-1 rounded-full font-semibold",
-                        step.status === 'Completed' ? "bg-green-500/10 text-green-400" :
-                        step.status === 'Waiting' ? "bg-amber-500/10 text-amber-400" :
-                        "bg-slate-800 text-slate-500"
-                      )}>
-                        {step.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setModalStep(0)}
-                    className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button 
-                    onClick={() => setModalStep(2)}
-                    className="flex-[2] py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all flex items-center justify-center gap-2"
-                  >
-                    <AlertTriangle className="w-4 h-4" /> Approve & Execute Containment
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2 & 4: Execution / Rollback Terminal */}
-            {(modalStep === 2 || modalStep === 4) && (
-              <div className="animate-slide-up">
-                <div className="bg-[#0a0a0a] rounded-xl border border-slate-700/50 p-4 font-mono text-sm shadow-inner h-[250px] overflow-y-auto">
-                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-800 text-slate-500">
-                    <Terminal className="w-4 h-4" /> 
-                    <span>{modalStep === 2 ? 'Execution Engine' : 'Rollback Engine'}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {terminalLogs.map((log, idx) => (
-                      <div key={idx} className="flex gap-3 text-slate-300 animate-fade-in">
-                        <span className="text-cyan-500">{'>'}</span>
-                        <span className={log.includes('successfully') ? 'text-green-400' : 'text-slate-300'}>{log}</span>
-                      </div>
-                    ))}
-                    <div className="flex gap-3 text-slate-500 animate-pulse">
-                      <span className="text-cyan-500">{'>'}</span>
-                      <span className="w-2 h-4 bg-slate-500"></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3 & 5: Completed */}
-            {(modalStep === 3 || modalStep === 5) && (
-              <div className="text-center py-8 animate-slide-up">
-                <div className="w-20 h-20 mx-auto rounded-full bg-green-500/10 flex items-center justify-center border-2 border-green-500/20 mb-4 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
-                  <CheckCircle2 className="w-10 h-10 text-green-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-100 mb-2">
-                  {modalStep === 3 ? 'Action Executed Successfully' : 'Rollback Completed'}
-                </h3>
-                <p className="text-slate-400 mb-8 max-w-md mx-auto">
-                  {modalStep === 3 
-                    ? `The containment policy has been distributed to all edge nodes. Blast radius reduced by ${simulation.blastRadiusReduction}%.`
-                    : 'The system has been restored to its previous state. All related dependencies have passed health checks.'}
-                </p>
-                
-                <div className="flex justify-center gap-4">
-                  <button 
-                    onClick={() => setSelectedAction(null)}
-                    className="px-6 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition-colors"
-                  >
-                    Close Panel
-                  </button>
-                  {modalStep === 3 && selectedAction.rollbackAvailable && (
-                    <button 
-                      onClick={() => setModalStep(4)}
-                      className="px-6 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/50 text-amber-400 font-medium transition-colors flex items-center gap-2"
-                    >
-                      <RotateCcw className="w-4 h-4" /> Execute Rollback
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            
           </div>
         </div>
-      </div>
-    )
+      )
+    } catch { return null }
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-2">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-8 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-            <Zap className="w-6 h-6 text-cyan-400" />
-            Autonomous Response Layer
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Shield className="w-6 h-6 text-cyan-400" /> Autonomous Execution Center
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Execute, simulate, and rollback security actions across your infrastructure.
-          </p>
+          <p className="text-sm text-slate-400 mt-1">Controlled autonomy with human-in-the-loop gates</p>
         </div>
       </div>
 
-      {/* Main Actions Table */}
-      <div className="glass rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
-        <div className="p-5 border-b border-slate-700/50 flex items-center justify-between bg-slate-900/30">
-          <h2 className="text-lg font-semibold text-slate-100">Action Center & Rollback Engine</h2>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">1 Pending</span>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">2 Executed</span>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="bg-slate-900/50 text-slate-400 uppercase tracking-wider text-xs border-b border-slate-700/50">
-                <th className="p-4 font-medium">Action</th>
-                <th className="p-4 font-medium">Target Asset</th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium text-right">Risk Reduced</th>
-                <th className="p-4 font-medium text-right">Loss Avoided</th>
-                <th className="p-4 font-medium text-center">Controls</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/30">
-              {autonomousActions.map((action, idx) => (
-                <tr key={idx} className="hover:bg-slate-800/30 transition-colors group">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700 group-hover:border-cyan-500/30 transition-colors">
-                        <Terminal className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
-                      </div>
-                      <span className="font-semibold text-slate-200">{action.action}</span>
-                    </div>
-                  </td>
-                  <td className="p-4 font-mono text-slate-400 text-xs">{action.target}</td>
-                  <td className="p-4">
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5",
-                      action.status === 'Pending Approval' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                      "bg-green-500/10 text-green-400 border border-green-500/20"
-                    )}>
-                      {action.status === 'Pending Approval' && <Clock className="w-3 h-3" />}
-                      {action.status === 'Executed' && <CheckCircle2 className="w-3 h-3" />}
-                      {action.status}
+        {/* ACTION QUEUE */}
+        <div className="lg:col-span-2 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-amber-400" /> Execution Queue & History
+          </h2>
+          
+          {actions.length === 0 && (
+            <div className="p-8 text-center text-slate-500 border border-slate-800 rounded-xl bg-slate-900/50">
+              No pending or historical actions.
+            </div>
+          )}
+
+          {actions.map(action => (
+            <div 
+              key={action.id} 
+              className={cn(
+                "glass p-5 rounded-xl border transition-all cursor-pointer",
+                selectedAction?.id === action.id ? "border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-slate-700/50 hover:border-slate-600"
+              )}
+              onClick={() => { setSelectedAction(action); setModalStep("idle"); setRollbackStep("idle"); setTerminalLogs([]) }}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-slate-800">
+                    <Zap className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-100">{action.action_type}</h3>
+                    <p className="text-xs text-slate-400 font-mono">Target: {action.target}</p>
+                  </div>
+                </div>
+                <span className={cn("text-xs px-3 py-1 rounded-full font-semibold border", getStatusColor(action.status))}>
+                  {action.status}
+                </span>
+              </div>
+              <div className="text-sm text-slate-300 mt-2">
+                <span className="font-semibold text-slate-400">Reason:</span> {action.reason}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* DETAILS & EXECUTION PANEL */}
+        <div className="lg:col-span-1">
+          <div className="glass rounded-xl border border-slate-700/50 p-6 sticky top-6">
+            {!selectedAction ? (
+              <div className="text-center text-slate-500 py-12">
+                <ShieldAlert className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>Select an action to view details & execution options</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">{selectedAction.action_type}</h3>
+                  <p className="text-sm text-slate-400">Target: <span className="font-mono text-cyan-400">{selectedAction.target}</span></p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Incident</span>
+                    <span className="text-slate-300">{selectedAction.incident_title}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Confidence</span>
+                    <span className="text-emerald-400 font-bold">{(selectedAction.decision_confidence * 100).toFixed(0)}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Rollback Status</span>
+                    <span className={selectedAction.rollback_expires_at ? "text-emerald-400" : "text-amber-400"}>
+                      {selectedAction.rollback_expires_at ? `Expires ${new Date(selectedAction.rollback_expires_at).toLocaleDateString()}` : "Available"}
                     </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-slate-700 overflow-hidden">
-                        <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${action.riskReduction}%` }}></div>
-                      </div>
-                      <span className="text-cyan-400 font-semibold">{action.riskReduction}%</span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-right font-mono text-green-400 font-semibold">
-                    ${action.projectedLossAvoided.toLocaleString()}
-                  </td>
-                  <td className="p-4 text-center">
-                    {action.status === 'Pending Approval' ? (
+                  </div>
+                </div>
+
+                {selectedAction.status === 'Awaiting Approval' && renderSimulationPayload(selectedAction.simulation_payload)}
+
+                {/* APPROVAL WORKFLOW */}
+                {selectedAction.status === 'Awaiting Approval' && (
+                  <div className="pt-4 border-t border-slate-800 space-y-4">
+                    {modalStep === 'idle' ? (
                       <button 
-                        onClick={() => openActionModal(action)}
-                        className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-[0_0_10px_rgba(6,182,212,0.3)] hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] flex items-center gap-1.5 mx-auto"
+                        onClick={() => handleApproveAndExecute(selectedAction.id)}
+                        className="w-full py-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                       >
-                        <PlayCircle className="w-3.5 h-3.5" /> Execute
-                      </button>
-                    ) : action.rollbackAvailable ? (
-                      <button 
-                        onClick={() => handleRollback(action)}
-                        className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 text-xs font-bold transition-all flex items-center gap-1.5 mx-auto hover:text-amber-400 hover:border-amber-500/50"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" /> Rollback
+                        <Check className="w-5 h-5" /> Approve & Execute
                       </button>
                     ) : (
-                      <span className="text-xs text-slate-500 italic">Irreversible</span>
+                      <div className="bg-black/50 rounded-lg p-4 font-mono text-xs text-green-400 h-40 overflow-y-auto border border-slate-800">
+                        {terminalLogs.map((log, i) => (
+                          <div key={i}>{">"} {log}</div>
+                        ))}
+                        {modalStep === 'executing' && <div className="animate-pulse">{">"} _</div>}
+                      </div>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                )}
+
+                {/* ROLLBACK WORKFLOW */}
+                {selectedAction.status === 'Executed' && (
+                  <div className="pt-4 border-t border-slate-800 space-y-4">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                      <p className="text-xs text-emerald-400 font-semibold mb-1">Execution Hash</p>
+                      <p className="text-[10px] text-slate-400 font-mono break-all">{selectedAction.execution_hash}</p>
+                    </div>
+
+                    {rollbackStep === 'idle' ? (
+                      <button 
+                        onClick={() => handleRollback(selectedAction.id)}
+                        className="w-full py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex justify-center items-center gap-2 border border-slate-600"
+                      >
+                        <RotateCcw className="w-4 h-4" /> Trigger Rollback
+                      </button>
+                    ) : (
+                      <div className="bg-black/50 rounded-lg p-4 font-mono text-xs text-purple-400 h-32 overflow-y-auto border border-slate-800">
+                        {terminalLogs.map((log, i) => (
+                          <div key={i}>{">"} {log}</div>
+                        ))}
+                        {rollbackStep === 'executing' && <div className="animate-pulse">{">"} _</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* ROLLED BACK STATE */}
+                {selectedAction.status === 'Rolled Back' && (
+                  <div className="pt-4 border-t border-slate-800">
+                    <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg text-center">
+                      <RotateCcw className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                      <p className="text-sm font-bold text-purple-400">Successfully Rolled Back</p>
+                      <p className="text-xs text-slate-400 mt-1">at {new Date(selectedAction.rolled_back_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
-      
-      {/* Modal Overlay */}
-      {renderModal()}
-      
     </div>
   )
 }
