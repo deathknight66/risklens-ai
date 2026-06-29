@@ -98,6 +98,18 @@ db.exec(`
     is_active INTEGER DEFAULT 1,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS reports (
+    id TEXT PRIMARY KEY,
+    report_period TEXT NOT NULL,
+    generated_at TEXT NOT NULL,
+    prompt_version TEXT,
+    source_snapshot_json TEXT NOT NULL,
+    llm_summary TEXT NOT NULL,
+    llm_recommendations TEXT NOT NULL,
+    integrity_hash TEXT NOT NULL,
+    risk_rating TEXT NOT NULL
+  );
 `);
 
 export default db;

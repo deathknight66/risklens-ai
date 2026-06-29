@@ -12,6 +12,8 @@
     "@qdrant/js-client-rest": "^1.18.0",
     "better-sqlite3": "^12.11.1",
     "clsx": "^2.1.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.22.0",
     "next": "16.2.7",
     "openai": "^6.45.0",
