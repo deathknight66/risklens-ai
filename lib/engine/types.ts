@@ -32,6 +32,15 @@ export interface Incident {
   sourceIP?: string | null;
   target?: string | null;
   alerts: Alert[];
+  aiSummary?: string;
+  timelineJson?: string;
+  mitreTactics?: string;
+  rootCauseTree?: string;
+  promptVersion?: string;
+  tokenUsage?: number;
+  analysisCost?: number;
+  analysisConfidence?: number;
+  analystNotes?: string;
 }
 
 export function generateId(): string {

@@ -42,7 +42,16 @@ db.exec(`
     status TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    summary TEXT
+    summary TEXT,
+    ai_summary TEXT,
+    timeline_json TEXT,
+    mitre_tactics TEXT,
+    root_cause_tree TEXT,
+    prompt_version TEXT,
+    token_usage INTEGER,
+    analysis_cost REAL,
+    analysis_confidence REAL,
+    analyst_notes TEXT
   );
 
   CREATE TABLE IF NOT EXISTS incident_alerts (

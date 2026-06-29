@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Zap,
   Play,
+  History,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -398,7 +399,17 @@ export default function DashboardPage() {
       {/* ============================================
           Stat Cards Row
           ============================================ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Threat Memory Hits */}
+        <StatCard
+          title="Threat Memory Hits"
+          value="6"
+          color="#a855f7"
+          icon={History}
+          delay={50}
+          subtitle="recurring attack patterns"
+        />
+
         {/* Security Score */}
         <StatCard
           title="Security Score"

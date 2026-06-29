@@ -13,6 +13,7 @@ import {
   Users,
   Zap,
   Shield,
+  History,
 } from "lucide-react";
 import { businessImpacts, RiskPropagationNode, scenarioComparisons } from "@/lib/mock-data";
 
@@ -268,6 +269,28 @@ export default function ImpactPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Historical Loss Correlation (Threat Memory) */}
+          <div className="glass rounded-2xl p-6 border border-purple-500/30 shadow-2xl relative overflow-hidden group bg-purple-900/10">
+            <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+            <h3 className="text-lg font-semibold text-slate-100 mb-2 flex items-center gap-2 relative z-10">
+              <History className="w-5 h-5 text-purple-400" />
+              Historical Loss Correlation
+            </h3>
+            <p className="text-sm text-slate-300 relative z-10 mb-4">
+              Based on <span className="font-bold text-purple-300">4 similar past incidents</span> found in Threat Memory.
+            </p>
+            <div className="relative z-10 grid grid-cols-2 gap-4">
+              <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Average Loss</div>
+                <div className="text-xl font-bold text-red-400">$84,500</div>
+              </div>
+              <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Max Recorded</div>
+                <div className="text-xl font-bold text-red-500">$142,000</div>
+              </div>
             </div>
           </div>
 
