@@ -1,301 +1,243 @@
 "use client";
 
+import { useState } from "react";
 import {
   DollarSign,
   TrendingDown,
-  AlertTriangle,
-  Clock,
   Database,
   ShieldAlert,
-  ArrowUpRight,
-  ArrowDownRight,
-  BarChart3,
   Target,
+  Server,
+  Network,
+  Activity,
+  Users,
+  Zap,
+  Shield,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ScatterChart,
-  Scatter,
-  Cell,
-  ZAxis,
-  PieChart,
-  Pie,
-} from "recharts";
-import { businessImpacts, riskMatrixData } from "@/lib/mock-data";
+import { businessImpacts, RiskPropagationNode } from "@/lib/mock-data";
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#1e293b] border border-slate-700 rounded-lg p-3 shadow-xl">
-        <p className="text-sm text-slate-200 font-medium">{label || payload[0]?.payload?.category}</p>
-        {payload.map((entry: any, i: number) => (
-          <p key={i} className="text-xs text-slate-400">
-            {entry.name}: <span className="text-slate-200">{typeof entry.value === 'number' && entry.name?.includes('Loss') ? `$${entry.value.toLocaleString()}` : entry.value?.toLocaleString()}</span>
-          </p>
-        ))}
+const PropagationNode = ({ node }: { node: RiskPropagationNode }) => {
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'compromised': return 'border-red-500/50 bg-red-500/10 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]';
+      case 'at_risk': return 'border-orange-500/50 bg-orange-500/10 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.2)]';
+      case 'safe': return 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400';
+      default: return 'border-slate-500/50 bg-slate-500/10 text-slate-400';
+    }
+  };
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'server': return <Server size={16} />;
+      case 'database': return <Database size={16} />;
+      case 'api': return <Network size={16} />;
+      case 'business_process': return <Activity size={16} />;
+      default: return <Server size={16} />;
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className={`flex items-center gap-3 p-3 rounded-xl border backdrop-blur-md ${getStatusStyle(node.status)} min-w-[200px] z-10 relative overflow-hidden group`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div className="p-2 bg-black/20 rounded-lg">
+          {getIcon(node.type)}
+        </div>
+        <div>
+          <div className="text-sm font-bold tracking-wide">{node.label}</div>
+          <div className="text-xs font-mono opacity-80 flex items-center gap-1 mt-0.5">
+            <TrendingDown size={12} />
+            ${node.lossPerHour.toLocaleString()}/hr
+          </div>
+        </div>
+        {node.status === 'compromised' && (
+          <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500 animate-ping m-2"></div>
+        )}
       </div>
-    );
-  }
-  return null;
+      
+      {node.children && node.children.length > 0 && (
+        <>
+          <div className="w-px h-8 bg-slate-600"></div>
+          <div className="flex justify-center">
+            {node.children.map((child, idx) => {
+              const isFirst = idx === 0;
+              const isLast = idx === node.children!.length - 1;
+              const isOnly = node.children!.length === 1;
+
+              return (
+                <div key={child.id} className="relative flex flex-col items-center px-4">
+                  {!isOnly && (
+                    <div className="absolute top-0 h-px bg-slate-600" style={{
+                      left: isFirst ? '50%' : '0',
+                      right: isLast ? '50%' : '0'
+                    }}></div>
+                  )}
+                  <div className="absolute top-0 left-1/2 w-px h-8 bg-slate-600 -translate-x-1/2"></div>
+                  <div className="pt-8">
+                    <PropagationNode node={child} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
-const totalFinancialLoss = businessImpacts.reduce((sum, b) => sum + b.financialLoss, 0);
-const totalRecords = businessImpacts.reduce((sum, b) => sum + b.dataRecordsAffected, 0);
-const totalDowntime = businessImpacts.reduce((sum, b) => sum + b.downtimeHours, 0);
-const avgReputation = Math.round(businessImpacts.reduce((sum, b) => sum + b.reputationScore, 0) / businessImpacts.length);
-const totalMitigation = businessImpacts.reduce((sum, b) => sum + b.mitigationCost, 0);
-
-const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-const sortedImpacts = [...businessImpacts].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-
-const financialChartData = businessImpacts.map((b) => ({
-  category: b.category.split(' ').slice(0, 3).join(' '),
-  'Financial Loss': b.financialLoss,
-  'Mitigation Cost': b.mitigationCost,
-}));
-
-const priorityDistribution = [
-  { name: 'Critical', value: businessImpacts.filter(b => b.priority === 'critical').length, color: '#ef4444' },
-  { name: 'High', value: businessImpacts.filter(b => b.priority === 'high').length, color: '#f97316' },
-  { name: 'Medium', value: businessImpacts.filter(b => b.priority === 'medium').length, color: '#f59e0b' },
-  { name: 'Low', value: businessImpacts.filter(b => b.priority === 'low').length, color: '#22c55e' },
-];
-
 export default function ImpactPage() {
+  const [activeScenario, setActiveScenario] = useState(businessImpacts[0]);
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100">Business Impact Analysis</h1>
-        <p className="text-slate-400 mt-1">Quantify cyber risk in business terms</p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="glass rounded-xl p-4 card-hover animate-slide-up">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
-              <DollarSign size={16} className="text-red-400" />
-            </div>
-            <span className="text-xs text-slate-500">Total Financial Risk</span>
-          </div>
-          <div className="text-2xl font-bold text-red-400">${(totalFinancialLoss / 1000000).toFixed(2)}M</div>
-          <div className="flex items-center gap-1 mt-1">
-            <ArrowUpRight size={12} className="text-red-400" />
-            <span className="text-xs text-red-400">+15% vs last month</span>
-          </div>
+    <div className="space-y-6 animate-fade-in p-2">
+      {/* Boardroom Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">Business Risk Engine</h1>
+          <p className="text-slate-400 mt-1 font-medium tracking-wide">Real-time financial impact & blast radius analysis</p>
         </div>
-
-        <div className="glass rounded-xl p-4 card-hover animate-slide-up stagger-1">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-orange-500/10 rounded-lg flex items-center justify-center">
-              <Database size={16} className="text-orange-400" />
-            </div>
-            <span className="text-xs text-slate-500">Records at Risk</span>
-          </div>
-          <div className="text-2xl font-bold text-orange-400">{(totalRecords / 1000).toFixed(1)}K</div>
-          <span className="text-xs text-slate-500">across all incidents</span>
-        </div>
-
-        <div className="glass rounded-xl p-4 card-hover animate-slide-up stagger-2">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center">
-              <Clock size={16} className="text-amber-400" />
-            </div>
-            <span className="text-xs text-slate-500">Total Downtime</span>
-          </div>
-          <div className="text-2xl font-bold text-amber-400">{totalDowntime}h</div>
-          <span className="text-xs text-slate-500">business hours lost</span>
-        </div>
-
-        <div className="glass rounded-xl p-4 card-hover animate-slide-up stagger-3">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center">
-              <TrendingDown size={16} className="text-purple-400" />
-            </div>
-            <span className="text-xs text-slate-500">Reputation Score</span>
-          </div>
-          <div className="text-2xl font-bold text-purple-400">{avgReputation}/100</div>
-          <div className="flex items-center gap-1 mt-1">
-            <ArrowDownRight size={12} className="text-red-400" />
-            <span className="text-xs text-red-400">-8 points</span>
-          </div>
-        </div>
-
-        <div className="glass rounded-xl p-4 card-hover animate-slide-up stagger-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
-              <ShieldAlert size={16} className="text-green-400" />
-            </div>
-            <span className="text-xs text-slate-500">Mitigation Cost</span>
-          </div>
-          <div className="text-2xl font-bold text-green-400">${(totalMitigation / 1000).toFixed(0)}K</div>
-          <span className="text-xs text-slate-500">{Math.round((totalMitigation / totalFinancialLoss) * 100)}x less than risk</span>
+        <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto">
+          {businessImpacts.map((scenario, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveScenario(scenario)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                activeScenario.category === scenario.category 
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]' 
+                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:bg-slate-800'
+              }`}
+            >
+              {scenario.category}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Financial Impact Chart */}
-        <div className="lg:col-span-2 glass rounded-xl p-6">
-          <h3 className="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
-            <BarChart3 size={18} className="text-cyan-400" />
-            Financial Impact vs Mitigation Cost
-          </h3>
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={financialChartData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="category" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(val) => `$${(val / 1000).toFixed(0)}K`} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="Financial Loss" fill="#ef4444" radius={[4, 4, 0, 0]} opacity={0.8} />
-              <Bar dataKey="Mitigation Cost" fill="#22c55e" radius={[4, 4, 0, 0]} opacity={0.8} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-6 mt-3">
-            <span className="flex items-center gap-2 text-xs text-slate-400"><span className="w-3 h-3 bg-red-500 rounded" /> Financial Loss</span>
-            <span className="flex items-center gap-2 text-xs text-slate-400"><span className="w-3 h-3 bg-green-500 rounded" /> Mitigation Cost</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Risk Propagation Tree */}
+        <div className="lg:col-span-8 glass rounded-2xl p-6 border border-slate-700/50 shadow-2xl relative overflow-hidden flex flex-col min-h-[450px]">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5"></div>
+          <div className="relative z-10 flex items-center justify-between mb-8">
+            <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+              <Zap size={20} className="text-cyan-400" />
+              Cyber Domino Effect
+            </h3>
+            <div className="flex gap-3 text-xs font-medium">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span> Compromised
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></span> At Risk
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Safe
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-center relative z-10 overflow-x-auto pb-8">
+            {activeScenario.propagationTree ? (
+               <PropagationNode node={activeScenario.propagationTree} />
+            ) : (
+               <div className="text-slate-500 flex flex-col items-center gap-3">
+                 <ShieldAlert size={48} className="opacity-20" />
+                 <p className="font-medium text-sm">No propagation data for this scenario</p>
+               </div>
+            )}
           </div>
         </div>
 
-        {/* Priority Distribution */}
-        <div className="glass rounded-xl p-6">
-          <h3 className="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
-            <Target size={18} className="text-orange-400" />
-            Risk Priority
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={priorityDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={4}
-                dataKey="value"
-              >
-                {priorityDistribution.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 mt-4">
-            {priorityDistribution.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-slate-400">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                  {item.name}
-                </span>
-                <span className="text-slate-200 font-medium">{item.value}</span>
+        {/* Widgets Column */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          
+          {/* Financial Loss Engine */}
+          <div className="glass rounded-2xl p-6 border border-slate-700/50 shadow-2xl relative overflow-hidden group flex-1">
+            <div className="absolute inset-0 bg-gradient-to-bl from-red-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+            <h3 className="text-lg font-semibold text-slate-100 mb-5 flex items-center gap-2 relative z-10">
+              <DollarSign size={20} className="text-red-400" />
+              Financial Loss Engine
+            </h3>
+            
+            <div className="space-y-4 relative z-10">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 transition-colors hover:bg-slate-800">
+                <span className="text-sm text-slate-400">Direct Loss</span>
+                <span className="font-mono text-slate-200 font-medium">${activeScenario.lossEngine.directLoss.toLocaleString()}</span>
               </div>
-            ))}
+              <div className="flex justify-between items-center p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 transition-colors hover:bg-slate-800">
+                <span className="text-sm text-slate-400">Downtime Cost</span>
+                <span className="font-mono text-slate-200 font-medium">${activeScenario.lossEngine.downtimeCost.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 transition-colors hover:bg-slate-800">
+                <span className="text-sm text-slate-400">SLA Penalties</span>
+                <span className="font-mono text-slate-200 font-medium">${activeScenario.lossEngine.slaPenalty.toLocaleString()}</span>
+              </div>
+              
+              <div className="mt-6 pt-5 border-t border-slate-700/80">
+                <div className="flex justify-between items-end">
+                  <span className="text-sm text-slate-300 font-medium uppercase tracking-wider">Total Estimated</span>
+                  <span className="text-3xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)] font-mono">
+                    ${activeScenario.lossEngine.totalEstimated.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Blast Radius Calculator */}
+          <div className="glass rounded-2xl p-6 border border-slate-700/50 shadow-2xl relative overflow-hidden group flex-1">
+             <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+             <h3 className="text-lg font-semibold text-slate-100 mb-5 flex items-center gap-2 relative z-10">
+              <Target size={20} className="text-orange-400" />
+              Blast Radius Calculator
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4 relative z-10">
+              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex flex-col items-center justify-center gap-2 hover:bg-slate-700 transition-colors shadow-inner">
+                <Server size={22} className="text-blue-400" />
+                <div className="text-2xl font-bold text-slate-100">{activeScenario.blastRadius.systems}</div>
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Systems</div>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex flex-col items-center justify-center gap-2 hover:bg-slate-700 transition-colors shadow-inner">
+                <Users size={22} className="text-purple-400" />
+                <div className="text-2xl font-bold text-slate-100">{activeScenario.blastRadius.users.toLocaleString()}</div>
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Users</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex flex-col items-center justify-center gap-2 hover:bg-slate-700 transition-colors shadow-inner">
+                <Database size={22} className="text-emerald-400" />
+                <div className="text-2xl font-bold text-slate-100">{activeScenario.blastRadius.databases}</div>
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Databases</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex flex-col items-center justify-center gap-2 hover:bg-slate-700 transition-colors shadow-inner">
+                <Network size={22} className="text-amber-400" />
+                <div className="text-2xl font-bold text-slate-100">{activeScenario.blastRadius.apis}</div>
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">APIs</div>
+              </div>
+            </div>
+          </div>
+          
         </div>
       </div>
-
-      {/* Risk Matrix */}
-      <div className="glass rounded-xl p-6">
-        <h3 className="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
-          <AlertTriangle size={18} className="text-amber-400" />
-          Risk Priority Matrix
-        </h3>
-        <div className="grid grid-cols-6 gap-1">
-          {/* Y-axis label */}
-          <div className="flex items-center justify-center">
-            <span className="text-xs text-slate-500 -rotate-90 whitespace-nowrap">Impact →</span>
-          </div>
-          {/* Matrix grid */}
-          <div className="col-span-5">
-            <div className="grid grid-cols-5 gap-1">
-              {[5, 4, 3, 2, 1].map((impact) =>
-                [1, 2, 3, 4, 5].map((likelihood) => {
-                  const risk = riskMatrixData.find(
-                    (r) => r.impact === impact && r.likelihood === likelihood
-                  );
-                  const riskLevel = impact * likelihood;
-                  const bgColor = riskLevel >= 15 ? 'bg-red-500/20 border-red-500/30' : riskLevel >= 8 ? 'bg-orange-500/15 border-orange-500/25' : riskLevel >= 4 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-green-500/10 border-green-500/20';
-                  return (
-                    <div
-                      key={`${impact}-${likelihood}`}
-                      className={`aspect-square rounded-lg ${bgColor} border flex items-center justify-center p-1 relative group`}
-                    >
-                      {risk && (
-                        <>
-                          <span className="text-[10px] text-center leading-tight text-slate-300">{risk.label}</span>
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-200 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-slate-700">
-                            {risk.label}: {impact}×{likelihood}={riskLevel}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+      
+      {/* Mitigation Status Card */}
+      <div className="glass rounded-2xl p-6 border border-slate-700/50 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+         <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+               <Shield className="text-emerald-400" size={24} />
             </div>
-            <div className="flex justify-between mt-2 px-1">
-              {[1, 2, 3, 4, 5].map((l) => (
-                <span key={l} className="text-xs text-slate-500">{l}</span>
-              ))}
+            <div>
+               <h4 className="text-slate-100 font-semibold text-lg">Recommended Action</h4>
+               <p className="text-slate-400 text-sm mt-1 max-w-2xl">Execute automated isolation playbook to contain the threat and prevent further lateral movement across the network.</p>
             </div>
-            <div className="text-center mt-1">
-              <span className="text-xs text-slate-500">Likelihood →</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Impact Details Table */}
-      <div className="glass rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-700/50">
-          <h3 className="text-base font-semibold text-slate-100">Detailed Impact Assessment</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-700/50">
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase">Category</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase">Priority</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500 uppercase">Financial Loss</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500 uppercase">Records</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500 uppercase">Downtime</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500 uppercase">Reputation</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase">Compliance Risk</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500 uppercase">Mitigation Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedImpacts.map((impact, i) => {
-                const priColor = impact.priority === 'critical' ? 'bg-red-500/10 text-red-400' : impact.priority === 'high' ? 'bg-orange-500/10 text-orange-400' : impact.priority === 'medium' ? 'bg-amber-500/10 text-amber-400' : 'bg-green-500/10 text-green-400';
-                return (
-                  <tr key={i} className="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 text-sm text-slate-200">{impact.category}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${priColor}`}>{impact.priority}</span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-right text-red-400 font-mono">${impact.financialLoss.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-sm text-right text-slate-300 font-mono">{impact.dataRecordsAffected.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-sm text-right text-slate-300">{impact.downtimeHours}h</td>
-                    <td className="py-3 px-4 text-sm text-right">
-                      <span className={impact.reputationScore < 60 ? 'text-red-400' : impact.reputationScore < 75 ? 'text-amber-400' : 'text-green-400'}>
-                        {impact.reputationScore}/100
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-400 max-w-[200px] truncate">{impact.complianceRisk}</td>
-                    <td className="py-3 px-4 text-sm text-right text-green-400 font-mono">${impact.mitigationCost.toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+         </div>
+         <div className="sm:text-right shrink-0">
+            <div className="text-sm text-slate-400 mb-1">Estimated Mitigation Cost</div>
+            <div className="text-2xl font-bold text-emerald-400 font-mono">${activeScenario.mitigationCost.toLocaleString()}</div>
+         </div>
       </div>
     </div>
   );

@@ -46,11 +46,21 @@ export interface InvestigationResult {
   id: string
   incidentId: string
   rootCause: string
-  attackTimeline: { time: string; event: string; severity: string }[]
+  attackTimeline: { time: string; event: string; severity: string; confidence: number; details?: string }[]
+  rootCauseTree: RootCauseNode
+  threatMemory: { similarIncidentId: string; similarityScore: number; date: string; description: string }
   affectedAssets: string[]
   riskScore: number
-  recommendation: string[]
+  recommendation: { action: string; type: 'block_ip' | 'isolate_endpoint' | 'reset_credentials' | 'disable_api_key' | 'general'; status: 'pending' | 'executing' | 'completed' }[]
   aiSummary: string
+}
+
+export interface RootCauseNode {
+  id: string
+  label: string
+  type: 'initial_access' | 'execution' | 'lateral_movement' | 'impact'
+  confidence: number
+  children?: RootCauseNode[]
 }
 
 export interface BusinessImpact {
@@ -62,6 +72,18 @@ export interface BusinessImpact {
   complianceRisk: string
   mitigationCost: number
   priority: 'critical' | 'high' | 'medium' | 'low'
+  blastRadius: { systems: number; users: number; databases: number; apis: number }
+  lossEngine: { directLoss: number; downtimeCost: number; slaPenalty: number; totalEstimated: number }
+  propagationTree?: RiskPropagationNode
+}
+
+export interface RiskPropagationNode {
+  id: string
+  label: string
+  type: 'server' | 'database' | 'api' | 'business_process' | 'external_service'
+  status: 'compromised' | 'at_risk' | 'safe'
+  lossPerHour: number
+  children?: RiskPropagationNode[]
 }
 
 export interface Report {
@@ -273,52 +295,150 @@ export const investigationResults: InvestigationResult[] = [
     incidentId: 'THR-001',
     rootCause: 'Compromised credential from dark web marketplace. Attacker using automated tool "Hydra" to brute force SSH access with leaked corporate credentials.',
     attackTimeline: [
-      { time: '09:45:00', event: 'Initial reconnaissance scan on port 22', severity: 'low' },
-      { time: '09:52:00', event: 'First login attempt with leaked credentials', severity: 'medium' },
-      { time: '10:01:00', event: 'Automated brute force tool activated', severity: 'high' },
-      { time: '10:08:00', event: 'Rate exceeded 100 attempts/minute', severity: 'high' },
-      { time: '10:12:00', event: 'Successful login on service account', severity: 'critical' },
-      { time: '10:15:00', event: 'Lateral movement attempt detected', severity: 'critical' },
+      { time: '02:01:00', event: 'Phishing email delivered to HR department', severity: 'low', confidence: 95, details: 'Email matching known Emotet campaign signatures.' },
+      { time: '02:07:00', event: 'Employee clicked malicious link', severity: 'medium', confidence: 99, details: 'Redirected to spoofed O365 login page.' },
+      { time: '02:10:00', event: 'Credential stolen (svc01)', severity: 'high', confidence: 92, details: 'Session token hijacked.' },
+      { time: '02:14:00', event: 'Abnormal VPN login detected', severity: 'high', confidence: 88, details: 'Login from tor exit node in Frankfurt.' },
+      { time: '02:19:00', event: 'Privilege escalation attempt', severity: 'critical', confidence: 85, details: 'Exploiting local misconfiguration.' },
+      { time: '02:23:00', event: 'Database access initiated', severity: 'critical', confidence: 98, details: 'Querying customer_records table.' },
     ],
+    rootCauseTree: {
+      id: 'rc-1',
+      label: 'Initial Access (Phishing)',
+      type: 'initial_access',
+      confidence: 95,
+      children: [
+        {
+          id: 'rc-2',
+          label: 'Credential Abuse (svc01)',
+          type: 'execution',
+          confidence: 92,
+          children: [
+            {
+              id: 'rc-3',
+              label: 'Misconfigured VPN Access',
+              type: 'lateral_movement',
+              confidence: 88,
+              children: [
+                {
+                  id: 'rc-4',
+                  label: 'Customer DB Exfiltration',
+                  type: 'impact',
+                  confidence: 98
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    threatMemory: {
+      similarIncidentId: 'INC-2025-842',
+      similarityScore: 87,
+      date: '3 weeks ago',
+      description: 'Similar credential abuse pattern linked to APT29 group targeting financial sectors.'
+    },
     affectedAssets: ['auth-server-01', 'vpn-gateway', 'ad-controller', 'service-account-svc01'],
     riskScore: 92,
     recommendation: [
-      'Immediately disable compromised service account svc01',
-      'Block source IP 185.220.101.42 at perimeter firewall',
-      'Force password reset for all service accounts',
-      'Enable MFA for all SSH access',
-      'Review and revoke unnecessary service account privileges',
-      'Deploy rate limiting on SSH endpoints',
+      { action: 'Block IP 185.220.101.42', type: 'block_ip', status: 'pending' },
+      { action: 'Isolate affected endpoint (WS-HR-12)', type: 'isolate_endpoint', status: 'pending' },
+      { action: 'Reset credentials for svc01', type: 'reset_credentials', status: 'pending' },
+      { action: 'Disable VPN API Key', type: 'disable_api_key', status: 'pending' },
+      { action: 'Enable MFA for all SSH access', type: 'general', status: 'pending' },
     ],
-    aiSummary: 'This is a sophisticated credential-based attack leveraging previously leaked corporate credentials found on dark web marketplaces. The attacker used Hydra, an automated brute force tool, to systematically test credentials against SSH endpoints. A service account with weak credentials was successfully compromised, enabling lateral movement attempts. Immediate credential rotation and MFA enforcement are critical to contain this incident.',
+    aiSummary: 'This is a sophisticated credential-based attack leveraging a recent phishing campaign. The attacker bypassed initial perimeter defenses by stealing valid session tokens. Immediate autonomous containment is recommended to prevent data exfiltration.',
   },
   {
     id: 'INV-002',
     incidentId: 'THR-002',
-    rootCause: 'Large-scale DDoS attack originating from Mirai-variant botnet. The attack uses a combination of HTTP flood and SYN flood techniques to overwhelm web infrastructure.',
+    rootCause: 'Large-scale DDoS attack originating from Mirai-variant botnet.',
     attackTimeline: [
-      { time: '09:20:00', event: 'Traffic anomaly first detected', severity: 'low' },
-      { time: '09:28:00', event: 'Traffic volume exceeded baseline by 300%', severity: 'medium' },
-      { time: '09:35:00', event: 'SYN flood packets identified', severity: 'high' },
-      { time: '09:38:00', event: 'HTTP flood from 12,000+ unique IPs', severity: 'critical' },
-      { time: '09:42:00', event: 'Service degradation on web cluster', severity: 'critical' },
-      { time: '09:48:00', event: 'Auto-scaling triggered, partial mitigation', severity: 'high' },
+      { time: '09:20:00', event: 'Traffic anomaly first detected', severity: 'low', confidence: 90 },
+      { time: '09:28:00', event: 'Traffic volume exceeded baseline by 300%', severity: 'medium', confidence: 95 },
+      { time: '09:35:00', event: 'SYN flood packets identified', severity: 'high', confidence: 99 },
+      { time: '09:38:00', event: 'HTTP flood from 12,000+ unique IPs', severity: 'critical', confidence: 99 },
     ],
-    affectedAssets: ['web-cluster-prod', 'load-balancer-01', 'cdn-edge', 'dns-primary'],
+    rootCauseTree: {
+      id: 'rc-ddos-1',
+      label: 'Botnet Assembly (Mirai)',
+      type: 'initial_access',
+      confidence: 99,
+      children: [
+        {
+          id: 'rc-ddos-2',
+          label: 'Volumetric Attack (Layer 4/7)',
+          type: 'execution',
+          confidence: 99,
+          children: [
+            {
+              id: 'rc-ddos-3',
+              label: 'Service Degradation',
+              type: 'impact',
+              confidence: 95
+            }
+          ]
+        }
+      ]
+    },
+    threatMemory: {
+      similarIncidentId: 'INC-2025-112',
+      similarityScore: 94,
+      date: '2 months ago',
+      description: 'Identical Mirai-variant botnet infrastructure used against competitor.'
+    },
+    affectedAssets: ['web-cluster-prod', 'load-balancer-01'],
     riskScore: 95,
     recommendation: [
-      'Activate DDoS mitigation service (Cloudflare/AWS Shield)',
-      'Enable geographic IP blocking for non-business regions',
-      'Implement rate limiting at CDN edge',
-      'Scale infrastructure horizontally during attack',
-      'Coordinate with ISP for upstream filtering',
-      'Review and update DDoS response playbook',
+      { action: 'Activate DDoS mitigation service (Cloudflare)', type: 'general', status: 'pending' },
+      { action: 'Block originating subnets', type: 'block_ip', status: 'pending' }
     ],
-    aiSummary: 'A Mirai-variant botnet launched a multi-vector DDoS attack combining HTTP flooding (Layer 7) and SYN flooding (Layer 4). The attack originates from approximately 12,000 compromised IoT devices across 45 countries. Peak traffic reached 45 Gbps, causing service degradation. Auto-scaling partially mitigated the impact, but dedicated DDoS protection services are needed for full mitigation.',
-  },
+    aiSummary: 'A Mirai-variant botnet launched a multi-vector DDoS attack combining HTTP flooding (Layer 7) and SYN flooding (Layer 4).',
+  }
 ]
 
 export const businessImpacts: BusinessImpact[] = [
+  {
+    category: 'Payment API Compromised',
+    financialLoss: 92000,
+    dataRecordsAffected: 15000,
+    downtimeHours: 6,
+    reputationScore: 58,
+    complianceRisk: 'High - PCI DSS violation',
+    mitigationCost: 35000,
+    priority: 'critical',
+    blastRadius: { systems: 3, users: 1200, databases: 2, apis: 14 },
+    lossEngine: { directLoss: 72000, downtimeCost: 0, slaPenalty: 20000, totalEstimated: 92000 },
+    propagationTree: {
+      id: 'p-1', label: 'Payment API (Gateway)', type: 'api', status: 'compromised', lossPerHour: 12000,
+      children: [
+        { id: 'p-2', label: 'Core Banking DB', type: 'database', status: 'at_risk', lossPerHour: 45000 },
+        { id: 'p-3', label: 'ERP System', type: 'server', status: 'at_risk', lossPerHour: 8000,
+          children: [
+            { id: 'p-4', label: 'Finance Processing', type: 'business_process', status: 'at_risk', lossPerHour: 15000 }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    category: 'Customer DB Exfiltration Risk',
+    financialLoss: 340000,
+    dataRecordsAffected: 23000,
+    downtimeHours: 0,
+    reputationScore: 52,
+    complianceRisk: 'Critical - GDPR violation',
+    mitigationCost: 55000,
+    priority: 'critical',
+    blastRadius: { systems: 1, users: 23000, databases: 1, apis: 0 },
+    lossEngine: { directLoss: 120000, downtimeCost: 0, slaPenalty: 220000, totalEstimated: 340000 },
+    propagationTree: {
+      id: 'db-1', label: 'Customer DB Primary', type: 'database', status: 'at_risk', lossPerHour: 50000,
+      children: [
+        { id: 'db-2', label: 'CRM System', type: 'business_process', status: 'at_risk', lossPerHour: 10000 }
+      ]
+    }
+  },
   {
     category: 'DDoS on Web Infrastructure',
     financialLoss: 285000,
@@ -327,58 +447,10 @@ export const businessImpacts: BusinessImpact[] = [
     reputationScore: 72,
     complianceRisk: 'Medium - SLA breach with 3 enterprise clients',
     mitigationCost: 45000,
-    priority: 'critical',
-  },
-  {
-    category: 'SSH Brute Force - Credential Compromise',
-    financialLoss: 520000,
-    dataRecordsAffected: 15000,
-    downtimeHours: 0,
-    reputationScore: 58,
-    complianceRisk: 'High - Potential PCI DSS violation',
-    mitigationCost: 35000,
-    priority: 'critical',
-  },
-  {
-    category: 'SQL Injection on Customer API',
-    financialLoss: 180000,
-    dataRecordsAffected: 8500,
-    downtimeHours: 1.5,
-    reputationScore: 65,
-    complianceRisk: 'High - GDPR data breach notification required',
-    mitigationCost: 28000,
     priority: 'high',
-  },
-  {
-    category: 'Ransomware on Finance Workstation',
-    financialLoss: 750000,
-    dataRecordsAffected: 42000,
-    downtimeHours: 8,
-    reputationScore: 45,
-    complianceRisk: 'Critical - SOX compliance impact',
-    mitigationCost: 120000,
-    priority: 'critical',
-  },
-  {
-    category: 'Data Exfiltration via DNS Tunneling',
-    financialLoss: 340000,
-    dataRecordsAffected: 23000,
-    downtimeHours: 0,
-    reputationScore: 52,
-    complianceRisk: 'High - Intellectual property theft',
-    mitigationCost: 55000,
-    priority: 'high',
-  },
-  {
-    category: 'Password Spraying on O365',
-    financialLoss: 45000,
-    dataRecordsAffected: 0,
-    downtimeHours: 0,
-    reputationScore: 85,
-    complianceRisk: 'Low - No data access confirmed',
-    mitigationCost: 12000,
-    priority: 'medium',
-  },
+    blastRadius: { systems: 12, users: 50000, databases: 0, apis: 5 },
+    lossEngine: { directLoss: 0, downtimeCost: 200000, slaPenalty: 85000, totalEstimated: 285000 }
+  }
 ]
 
 export const reports: Report[] = [
