@@ -643,3 +643,165 @@ export const scenarioComparisons = [
   { scenario: 'Rotate Credentials', loss: 150000, downtime: '2h', assetsHit: 3, actionType: 'warning' },
   { scenario: 'Contain Endpoint Now', loss: 90000, downtime: '1.5h', assetsHit: 2, actionType: 'success' },
 ]
+
+// ===================== PHASE 4 AUTONOMOUS ACTIONS & HYBRID DATA =====================
+
+export const autonomousActions = [
+  {
+    id: "ACT-001",
+    action: "Block External IP",
+    target: "185.220.101.42",
+    source: "Firewall",
+    status: "Executed",
+    riskReduction: 72,
+    projectedLossAvoided: 142000,
+    rollbackAvailable: true,
+    executedAt: "2026-06-29T14:22:00Z"
+  },
+  {
+    id: "ACT-002",
+    action: "Isolate Payment API",
+    target: "payment-api-prod",
+    source: "Kubernetes Cluster",
+    status: "Pending Approval",
+    riskReduction: 84,
+    projectedLossAvoided: 280000,
+    rollbackAvailable: true,
+    executedAt: null
+  },
+  {
+    id: "ACT-003",
+    action: "Rotate Compromised Credentials",
+    target: "svc-payments-auth",
+    source: "IAM",
+    status: "Executed",
+    riskReduction: 66,
+    projectedLossAvoided: 92000,
+    rollbackAvailable: false,
+    executedAt: "2026-06-29T12:05:00Z"
+  }
+];
+
+export const actionSimulations = {
+  isolate_payment_api: {
+    estimatedDowntimeMinutes: 5,
+    financialImpact: 10000,
+    affectedServices: 3,
+    riskReduction: 84,
+    blastRadiusReduction: 67
+  },
+  block_external_ip: {
+    estimatedDowntimeMinutes: 0,
+    financialImpact: 0,
+    affectedServices: 0,
+    riskReduction: 72,
+    blastRadiusReduction: 54
+  },
+  revoke_api_key: {
+    estimatedDowntimeMinutes: 2,
+    financialImpact: 4000,
+    affectedServices: 1,
+    riskReduction: 61,
+    blastRadiusReduction: 43
+  }
+};
+
+export const executionLogs = [
+  "[14:22:01] Validating policy...",
+  "[14:22:02] Checking dependencies...",
+  "[14:22:03] Applying firewall rule...",
+  "[14:22:04] Blocking IP 185.220.101.42...",
+  "[14:22:05] Policy committed successfully.",
+  "[14:22:06] Blast radius reduced by 54%."
+];
+
+export const rollbackLogs = [
+  "[14:40:11] Reverting firewall policy...",
+  "[14:40:12] Restoring API access...",
+  "[14:40:13] Dependency checks passed.",
+  "[14:40:14] Rollback completed successfully."
+];
+
+export const approvalWorkflow = [
+  { stage: "AI Recommendation", status: "Completed" },
+  { stage: "SOC Analyst Approval", status: "Waiting" },
+  { stage: "Execution Engine", status: "Locked" },
+  { stage: "Post-Execution Verification", status: "Locked" }
+];
+
+export const intrusionEvents = [
+  {
+    dataset: "CIC-IDS2017",
+    attackType: "Brute Force",
+    sourceIP: "172.16.0.5",
+    targetAsset: "vpn-gateway-prod",
+    timestamp: "2026-06-29T02:11:00Z",
+    packets: 442,
+    severity: "High"
+  },
+  {
+    dataset: "UNSW-NB15",
+    attackType: "DoS",
+    sourceIP: "149.171.126.14",
+    targetAsset: "payment-api-prod",
+    timestamp: "2026-06-29T02:14:00Z",
+    packets: 18420,
+    severity: "Critical"
+  }
+];
+
+export const idsAlerts = [
+  {
+    engine: "Suricata",
+    signature: "ET SCAN Suspicious inbound to MSSQL port 1433",
+    sourceIP: "185.220.101.42",
+    targetIP: "10.0.2.11",
+    protocol: "TCP",
+    severity: 4
+  },
+  {
+    engine: "Suricata",
+    signature: "ET WEB_SERVER SQL Injection Attempt UNION SELECT",
+    sourceIP: "91.240.118.172",
+    targetIP: "10.0.3.21",
+    protocol: "HTTP",
+    severity: 5
+  }
+];
+
+export const zeekConnections = [
+  {
+    ts: "2026-06-29T02:16:20Z",
+    uid: "C8w7Xa",
+    id_orig_h: "91.240.118.172",
+    id_resp_h: "10.0.3.21",
+    service: "http",
+    duration: 12.3,
+    bytes_out: 92381,
+    bytes_in: 1822
+  }
+];
+
+export const mitreTimeline = [
+  { technique: "T1566", stage: "Phishing" },
+  { technique: "T1078", stage: "Valid Accounts" },
+  { technique: "T1021", stage: "Remote Services" },
+  { technique: "T1486", stage: "Data Encrypted for Impact" }
+];
+
+export const cveFeed = [
+  {
+    cve: "CVE-2025-1974",
+    product: "Apache HTTP Server",
+    severity: "Critical",
+    cvss: 9.8,
+    exploited: true
+  },
+  {
+    cve: "CVE-2026-10211",
+    product: "OpenSSH",
+    severity: "High",
+    cvss: 8.4,
+    exploited: false
+  }
+];

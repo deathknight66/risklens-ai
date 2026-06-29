@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ const sidebarItems = [
   { label: 'Threats', icon: ShieldAlert, href: '/dashboard/threats' },
   { label: 'Investigation', icon: Search, href: '/dashboard/investigation' },
   { label: 'Business Impact', icon: BarChart3, href: '/dashboard/impact' },
+  { label: 'Actions', icon: Zap, href: '/dashboard/actions' },
   { label: 'Reports', icon: FileText, href: '/dashboard/reports' },
 ]
 

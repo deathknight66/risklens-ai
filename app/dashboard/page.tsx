@@ -352,14 +352,20 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-col gap-3 min-w-[200px]">
-            <button className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 px-4 rounded-lg transition-colors">
-              <Play className="w-4 h-4" fill="currentColor" />
-              Execute
-            </button>
-            <button className="w-full flex items-center justify-center gap-2 glass hover:bg-slate-800 text-slate-300 font-medium py-3 px-4 rounded-lg transition-colors border border-slate-600">
-              <Activity className="w-4 h-4" />
-              Simulate Alternative
-            </button>
+            <div className="flex gap-3">
+              <Link
+                href="/dashboard/actions"
+                className="px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all flex items-center gap-2"
+              >
+                <Zap className="w-4 h-4" /> Execute Action
+              </Link>
+              <Link
+                href="/dashboard/impact"
+                className="px-6 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-sm transition-colors flex items-center gap-2"
+              >
+                <Monitor className="w-4 h-4" /> Simulate Alternative
+              </Link>
+            </div>
           </div>
 
         </div>
