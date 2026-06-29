@@ -38,9 +38,9 @@ const PropagationNode = ({ node }: { node: RiskPropagationNode }) => {
 
   return (
     <div className="flex flex-col items-center">
-      <div className={`flex items-center gap-3 p-3 rounded-xl border backdrop-blur-md ${getStatusStyle(node.status)} min-w-[200px] z-10 relative overflow-hidden group`}>
+      <div className={`flex items-center gap-3 p-3 rounded-xl border bg-slate-900 ${getStatusStyle(node.status)} min-w-[200px] z-10 relative overflow-hidden group`}>
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        <div className="p-2 bg-black/20 rounded-lg">
+        <div className="p-2 bg-black/40 rounded-lg">
           {getIcon(node.type)}
         </div>
         <div>
@@ -51,7 +51,7 @@ const PropagationNode = ({ node }: { node: RiskPropagationNode }) => {
           </div>
         </div>
         {node.status === 'compromised' && (
-          <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500 animate-ping m-2"></div>
+          <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500 animate-pulse m-2 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
         )}
       </div>
       
