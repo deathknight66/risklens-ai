@@ -1,0 +1,32 @@
+{
+  "techniques": [
+    { "id": "T1110", "name": "Brute Force" },
+    { "id": "T1078", "name": "Valid Accounts" },
+    { "id": "T1190", "name": "Exploit Public-Facing Application" },
+    { "id": "T1068", "name": "Exploitation for Privilege Escalation" },
+    { "id": "T1021", "name": "Remote Services" },
+    { "id": "T1059", "name": "Command and Scripting Interpreter" },
+    { "id": "T1105", "name": "Ingress Tool Transfer" },
+    { "id": "T1053", "name": "Scheduled Task/Job" },
+    { "id": "T1543", "name": "Create or Modify System Process" },
+    { "id": "T1548", "name": "Abuse Elevation Control Mechanism" },
+    { "id": "T1136", "name": "Create Account" },
+    { "id": "T1098", "name": "Account Manipulation" },
+    { "id": "T1003", "name": "OS Credential Dumping" },
+    { "id": "T1555", "name": "Credentials from Password Stores" },
+    { "id": "T1040", "name": "Network Sniffing" },
+    { "id": "T1046", "name": "Network Service Discovery" },
+    { "id": "T1082", "name": "System Information Discovery" },
+    { "id": "T1083", "name": "File and Directory Discovery" },
+    { "id": "T1570", "name": "Lateral Tool Transfer" },
+    { "id": "T1563", "name": "Remote Service Session Hijacking" },
+    { "id": "T1560", "name": "Archive Collected Data" },
+    { "id": "T1119", "name": "Automated Collection" },
+    { "id": "T1048", "name": "Exfiltration Over Alternative Protocol" },
+    { "id": "T1041", "name": "Exfiltration Over C2 Channel" },
+    { "id": "T1485", "name": "Data Destruction" },
+    { "id": "T1486", "name": "Data Encrypted for Impact" },
+    { "id": "T1499", "name": "Endpoint Denial of Service" },
+    { "id": "T1498", "name": "Network Denial of Service" }
+  ]
+}
