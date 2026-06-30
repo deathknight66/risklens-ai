@@ -99,6 +99,33 @@ db.prepare(`
     actor_hash TEXT NOT NULL,
     event_type TEXT NOT NULL,
     weight INTEGER DEFAULT 1,
+    source_stakeholder_id TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare('DROP TABLE IF EXISTS retention_playbooks').run();
+db.prepare(`
+  CREATE TABLE retention_playbooks (
+    id TEXT PRIMARY KEY,
+    trigger_type TEXT NOT NULL,
+    threshold INTEGER NOT NULL,
+    action_type TEXT NOT NULL,
+    content_template TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare('DROP TABLE IF EXISTS retention_actions_log').run();
+db.prepare(`
+  CREATE TABLE retention_actions_log (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    trigger_type TEXT NOT NULL,
+    recommended_action TEXT NOT NULL,
+    executed INTEGER DEFAULT 0,
+    outcome TEXT,
+    notes TEXT,
     created_at TEXT NOT NULL
   )
 `).run();
@@ -256,21 +283,48 @@ insertStakeholder.run(crypto.randomBytes(8).toString('hex'), org.id, 'John Smith
 insertStakeholder.run(crypto.randomBytes(8).toString('hex'), org.id, 'Alice Bob', 'SecOps Lead', 'Security', 70, 1, 0, daysAgo(1));
 
 // Beta Infra (Pilot Active - Single Threaded Risk - 1 stakeholder)
-// (Note: org is just one organization in this mock script. We will assign beta infra to another org id if we had one. 
-// Wait, the seed script only creates ONE organization `AlphaSec`. We need to create Beta Infra organization to attach stakeholders accurately, or just attach to the one org we have.)
-// Let's create multiple orgs or just attach to the first one for simplicity, but that breaks semantics.
-// Let's just create 3 stakeholders for the main org.
+// In a real DB we'd have a second org, but let's mock it using the same org ID since our pipeline fetches by name, 
+// and our expansion API does `const org = orgs.find(o => o.name === deal.company_name);`.
+// But wait, our seed script only creates ONE organization in the `organizations` table: 'AlphaSec'.
+// Let's create a second organization 'Beta Infra'.
+const betaOrgId = crypto.randomBytes(8).toString('hex');
+const betaSlug = `beta-infra-${Date.now()}`;
+db.prepare(`
+  INSERT INTO organizations (id, name, slug, plan, status, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`).run(betaOrgId, 'Beta Infra', betaSlug, 'pro', 'active', now.toISOString());
 
+// Beta Infra Pilot Metrics (Low engagement to trigger churn)
+db.prepare(`
+  INSERT INTO pilot_success_metrics (id, organization_id, incidents_ingested, analyses_completed, playbooks_triggered, analyst_hours_saved, mttr_delta_minutes, prevented_escalations, containment_rate, time_to_first_value_minutes, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), betaOrgId, 50, 4, 1, 2.5, 5.0, 1, 10.0, 180, now.toISOString(), now.toISOString());
+
+// Beta Infra Stakeholder
+insertStakeholder.run(crypto.randomBytes(8).toString('hex'), betaOrgId, 'Mark Beta', 'Security Engineer', 'Security', 42, 1, 0, daysAgo(15));
+
+// AlphaSec Multi-champion spread events
 const insertEngagement = db.prepare(`
-  INSERT INTO deal_engagement_events (id, organization_id, actor_hash, event_type, weight, created_at)
+  INSERT INTO deal_engagement_events (id, organization_id, actor_hash, event_type, weight, source_stakeholder_id, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash1_jane', 'viewed_champion_kit', 5, null, daysAgo(5));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash1_jane', 'copied_share_link', 20, null, daysAgo(5));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash2_ciso', 'viewed_champion_kit', 5, 'jane_stakeholder_id', daysAgo(4));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash2_ciso', 'viewed_roi_section', 10, 'jane_stakeholder_id', daysAgo(4));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash3_procurement', 'opened_procurement_pack', 25, 'ciso_stakeholder_id', daysAgo(2));
+
+// 7. GTM-6 Retention Playbooks
+db.prepare('DELETE FROM retention_playbooks').run();
+db.prepare('DELETE FROM retention_actions_log').run();
+
+const insertRetPlaybook = db.prepare(`
+  INSERT INTO retention_playbooks (id, trigger_type, threshold, action_type, content_template, created_at)
   VALUES (?, ?, ?, ?, ?, ?)
 `);
-
-// Multi-champion spread events
-insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash1_jane', 'viewed_champion_kit', 5, daysAgo(5));
-insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash1_jane', 'copied_share_link', 20, daysAgo(5));
-insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash2_ciso', 'viewed_champion_kit', 5, daysAgo(4));
-insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash2_ciso', 'viewed_roi_section', 10, daysAgo(4));
-insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash3_procurement', 'opened_procurement_pack', 25, daysAgo(2));
+insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'high_churn_score', 70, 'founder_checkin', 'Schedule immediate check-in.', now.toISOString());
+insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'low_thread_strength', 35, 'champion_diversification', 'Trigger champion diversification playbook.', now.toISOString());
+insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'political_drift', 60, 'exec_alignment_refresh', 'Trigger executive alignment refresh.', now.toISOString());
+insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'automation_decay', 40, 'roi_refresh', 'Auto-send executive ROI refresh.', now.toISOString());
 
 console.log('Seeding complete.');

@@ -397,6 +397,28 @@ db.exec(`
     actor_hash TEXT NOT NULL,
     event_type TEXT NOT NULL,
     weight INTEGER DEFAULT 1,
+    source_stakeholder_id TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS retention_playbooks (
+    id TEXT PRIMARY KEY,
+    trigger_type TEXT NOT NULL,
+    threshold INTEGER NOT NULL,
+    action_type TEXT NOT NULL,
+    content_template TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS retention_actions_log (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    trigger_type TEXT NOT NULL,
+    recommended_action TEXT NOT NULL,
+    executed INTEGER DEFAULT 0,
+    outcome TEXT,
+    notes TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );

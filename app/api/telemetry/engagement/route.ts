@@ -17,7 +17,7 @@ const EVENT_WEIGHTS: Record<string, number> = {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { orgId, sig, eventType } = body;
+    const { orgId, sig, eventType, sourceStakeholderId } = body;
 
     if (!orgId || !sig || !eventType) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -51,9 +51,9 @@ export async function POST(req: Request) {
     }
 
     db.prepare(`
-      INSERT INTO deal_engagement_events (id, organization_id, actor_hash, event_type, weight, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(crypto.randomBytes(8).toString('hex'), orgId, actorHash, eventType, weight, now);
+      INSERT INTO deal_engagement_events (id, organization_id, actor_hash, event_type, weight, source_stakeholder_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(crypto.randomBytes(8).toString('hex'), orgId, actorHash, eventType, weight, sourceStakeholderId || null, now);
 
     return NextResponse.json({ status: 'recorded' });
 

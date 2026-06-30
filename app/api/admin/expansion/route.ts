@@ -18,15 +18,20 @@ export async function GET() {
     // but we can query organizations by name
     const orgs = db.prepare(`SELECT id, name FROM organizations`).all() as any[];
     
+    const playbooks = db.prepare(`SELECT * FROM retention_playbooks`).all() as any[];
+
     const results = pipeline.map(deal => {
       const org = orgs.find(o => o.name === deal.company_name);
       const orgId = org ? org.id : null;
 
       let expansionScore = 0;
       let churnRisk = 0;
+      let threadStrength = 0;
+      let driftScore = 0;
       let stakeholders = [];
       let championSpreadScore = 0;
       let dormant = false;
+      let recommendedActions: any[] = [];
 
       if (orgId) {
         // Stakeholders
@@ -35,6 +40,15 @@ export async function GET() {
         // Engagement Events
         const events = db.prepare(`SELECT * FROM deal_engagement_events WHERE organization_id = ? ORDER BY created_at DESC`).all(orgId) as any[];
         
+        // Thread Strength (Normalized)
+        // TS = (C * 0.40) + (I * 0.35) + (D * 0.25)
+        const champions = stakeholders.filter(s => s.is_champion);
+        const cScore = Math.min(5, champions.length) / 5 * 100;
+        const avgInfluence = stakeholders.length > 0 ? (stakeholders.reduce((sum, s) => sum + s.influence_score, 0) / stakeholders.length) : 0;
+        const uniqueDepts = new Set(stakeholders.map(s => s.department)).size;
+        const dScore = Math.min(5, uniqueDepts) / 5 * 100;
+        threadStrength = Math.round((cScore * 0.40) + (avgInfluence * 0.35) + (dScore * 0.25));
+
         // Champion Spread: unique actors
         const uniqueActors = new Set(events.map(e => e.actor_hash)).size;
         championSpreadScore = Math.min(100, uniqueActors * 20); // cap at 100
@@ -44,10 +58,17 @@ export async function GET() {
         const daysSinceLastEvent = lastEvent ? Math.floor((Date.now() - lastEvent.getTime()) / (1000 * 60 * 60 * 24)) : 30;
         const championSilenceScore = Math.min(100, (daysSinceLastEvent / 14) * 100);
 
-        // Activity & Automation Metrics (from pilot_success_metrics & beta_events)
+        // Political Drift Detector
+        // DS = (BlockerInfluenceDelta * 0.40) + (StakeholderSilenceDays * 0.35) + (TeamEngagementDrop * 0.25)
+        // Mocking BlockerInfluenceDelta and TeamEngagementDrop based on existing simple metrics
+        const blockers = stakeholders.filter(s => s.is_blocker);
+        const blockerInfluence = blockers.length > 0 ? (blockers.reduce((sum, s) => sum + s.influence_score, 0) / blockers.length) : 0;
+        const teamEngagementDrop = daysSinceLastEvent > 7 ? 80 : 10;
+        driftScore = Math.round((blockerInfluence * 0.40) + (championSilenceScore * 0.35) + (teamEngagementDrop * 0.25));
+
+        // Activity & Automation Metrics
         const metrics = db.prepare(`SELECT * FROM pilot_success_metrics WHERE organization_id = ? ORDER BY created_at DESC LIMIT 1`).get(orgId) as any;
         
-        // Mock calculations based on simple rules
         const seatGrowth = Math.min(100, stakeholders.length * 15);
         const workflowDepth = metrics ? Math.min(100, (metrics.playbooks_triggered / 50) * 100) : 0;
         const autoDep = metrics ? metrics.containment_rate : 0;
@@ -77,6 +98,23 @@ export async function GET() {
         if (daysSinceLastEvent > 14 && activityDecay > 50 && autoDecay > 50) {
           dormant = true;
         }
+
+        // Save Engine (Retention Actions)
+        playbooks.forEach(pb => {
+          let trigger = false;
+          if (pb.trigger_type === 'high_churn_score' && churnRisk >= pb.threshold) trigger = true;
+          if (pb.trigger_type === 'low_thread_strength' && threadStrength <= pb.threshold) trigger = true;
+          if (pb.trigger_type === 'political_drift' && driftScore >= pb.threshold) trigger = true;
+          if (pb.trigger_type === 'automation_decay' && autoDecay >= pb.threshold) trigger = true;
+
+          if (trigger) {
+            recommendedActions.push({
+              action_type: pb.action_type,
+              trigger_type: pb.trigger_type,
+              content_template: pb.content_template
+            });
+          }
+        });
       }
 
       return {
@@ -86,10 +124,13 @@ export async function GET() {
         orgId,
         expansionScore,
         churnRisk,
+        threadStrength,
+        driftScore,
         dormant,
         stakeholderCount: stakeholders.length,
         hasSingleChampionRisk: stakeholders.length < 2,
-        championSpread: championSpreadScore
+        championSpread: championSpreadScore,
+        recommendedActions
       };
     });
 
