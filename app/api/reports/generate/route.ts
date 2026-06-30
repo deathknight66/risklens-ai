@@ -5,11 +5,11 @@ import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(req: Request) {
+  const client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || 'dummy_for_build',
+  });
+
   try {
     const { period } = await req.json();
 
