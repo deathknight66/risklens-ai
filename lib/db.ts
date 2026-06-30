@@ -4,7 +4,8 @@ import path from 'path';
 // Setup database connection
 // In a real production scenario, this would be a Postgres connection pool.
 // For this POC, we use a local SQLite file.
-const dbPath = path.join(process.cwd(), 'risklens.db');
+const isProd = process.env.NODE_ENV === 'production';
+const dbPath = isProd ? '/tmp/risklens.db' : path.join(process.cwd(), 'risklens.db');
 const db = new Database(dbPath, { verbose: console.log });
 
 db.pragma('journal_mode = WAL');
