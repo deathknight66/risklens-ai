@@ -63,6 +63,9 @@ export async function POST(req: Request) {
     db.prepare('INSERT INTO auth_logs (id, organization_id, user_id, ip, user_agent, login_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       `log_${crypto.randomBytes(8).toString('hex')}`, activeOrg, userId, 'api', 'dashboard', now, 'api_key_generated'
     );
+    
+    const { BetaTelemetry } = require('@/lib/engine/telemetry');
+    BetaTelemetry.track(activeOrg, 'api_key_generated', userId, undefined, { scope });
 
     return NextResponse.json({ 
       id: keyId,

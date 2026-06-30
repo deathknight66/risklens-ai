@@ -294,6 +294,17 @@ db.exec(`
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
+  CREATE TABLE IF NOT EXISTS beta_events (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    user_id TEXT,
+    session_id TEXT,
+    event_type TEXT NOT NULL,
+    metadata_json TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,

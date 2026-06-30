@@ -115,6 +115,12 @@ export async function POST(req: Request) {
     recordUsage(orgId, 'ai_analyses', 1);
     recordUsage(orgId, 'token_usage', total_tokens);
 
+    // Beta Telemetry
+    const { BetaTelemetry } = require('@/lib/engine/telemetry');
+    if (!BetaTelemetry.hasTracked(orgId, 'first_ai_analysis')) {
+      BetaTelemetry.track(orgId, 'first_ai_analysis', undefined, undefined, { tokens: total_tokens, confidence: result.analysisConfidence });
+    }
+
     // Trigger memory storage asynchronously
     storeIncidentMemory(incidentId, orgId, result, logs).catch(err => {
       console.error("Failed to store incident memory:", err);

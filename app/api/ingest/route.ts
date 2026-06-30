@@ -178,6 +178,15 @@ export async function POST(request: Request) {
 
     recordUsage(orgId, 'logs_ingested', normalizedLogs.length);
 
+    // Beta Telemetry
+    const { BetaTelemetry } = require('@/lib/engine/telemetry');
+    if (normalizedLogs.length > 0 && !BetaTelemetry.hasTracked(orgId, 'first_log_ingested')) {
+       BetaTelemetry.track(orgId, 'first_log_ingested', undefined, undefined, { count: normalizedLogs.length, sourceType });
+    }
+    if (incidents.length > 0 && !BetaTelemetry.hasTracked(orgId, 'first_incident_created')) {
+       BetaTelemetry.track(orgId, 'first_incident_created', undefined, undefined, { title: incidents[0].title });
+    }
+
     return NextResponse.json({
       success: true,
       summary: {

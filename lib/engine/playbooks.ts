@@ -90,6 +90,12 @@ export class PlaybookEngine {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(runId, playbook.organization_id, playbook.id, incidentId, executionKey, 'running', new Date().toISOString());
 
+    // Beta Telemetry
+    const { BetaTelemetry } = require('@/lib/engine/telemetry');
+    if (!BetaTelemetry.hasTracked(playbook.organization_id, 'first_playbook_run')) {
+      BetaTelemetry.track(playbook.organization_id, 'first_playbook_run', undefined, undefined, { playbookId });
+    }
+
     const dag: PlaybookDAG = JSON.parse(playbook.dag_json);
     
     // Identify Start Nodes (nodes with no incoming edges)
