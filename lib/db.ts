@@ -305,6 +305,20 @@ db.exec(`
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
+  CREATE TABLE IF NOT EXISTS design_partner_feedback (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    interview_type TEXT NOT NULL,
+    pain_score INTEGER,
+    wow_moment TEXT,
+    confusing_moment TEXT,
+    missing_feature TEXT,
+    willing_to_pay INTEGER,
+    price_anchor REAL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
