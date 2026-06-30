@@ -26,6 +26,7 @@ db.prepare(`
     champion_score INTEGER,
     risk_of_stall TEXT,
     stakeholder_map_json TEXT,
+    tech_stack_json TEXT DEFAULT '[]',
     legal_status TEXT DEFAULT 'pending',
     security_review_status TEXT DEFAULT 'pending',
     budget_status TEXT DEFAULT 'pending',
@@ -48,6 +49,30 @@ db.prepare(`
     snapshot_json TEXT NOT NULL,
     hash TEXT NOT NULL,
     generated_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare('DROP TABLE IF EXISTS customer_references').run();
+db.prepare(`
+  CREATE TABLE customer_references (
+    id TEXT PRIMARY KEY,
+    company TEXT NOT NULL,
+    segment TEXT NOT NULL,
+    stack_json TEXT NOT NULL,
+    metrics_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare('DROP TABLE IF EXISTS objection_playbooks').run();
+db.prepare(`
+  CREATE TABLE objection_playbooks (
+    id TEXT PRIMARY KEY,
+    objection_type TEXT NOT NULL,
+    trigger_words_json TEXT NOT NULL,
+    response_strategy TEXT NOT NULL,
+    recommended_docs_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
   )
 `).run();
 
@@ -94,24 +119,24 @@ const daysAgo = (days) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).t
 
 // 1. Pipeline Deals
 const deals = [
-  { company: 'AlphaSec', status: 'closed_won', value: 2500, contact: daysAgo(2), score: 95, leg: 'approved', sec: 'approved', bud: 'approved', exec: 'approved' },
-  { company: 'Beta Infra', status: 'pilot_active', value: 1500, contact: daysAgo(1), score: 85, leg: 'approved', sec: 'pending', bud: 'pending', exec: 'approved' },
-  { company: 'Gamma DevOps', status: 'pilot_offered', value: 3500, contact: daysAgo(5), score: 70, leg: 'blocked', sec: 'pending', bud: 'pending', exec: 'pending' },
-  { company: 'Delta Cyber', status: 'demo_completed', value: 1000, contact: daysAgo(10), score: 60, leg: 'pending', sec: 'pending', bud: 'pending', exec: 'pending' },
-  { company: 'Epsilon Tech', status: 'lead', value: null, contact: daysAgo(16), score: null, leg: 'pending', sec: 'pending', bud: 'pending', exec: 'pending' },
-  { company: 'Zeta Bank', status: 'closed_lost', value: 5000, contact: daysAgo(20), score: 40, leg: 'blocked', sec: 'blocked', bud: 'blocked', exec: 'blocked' },
+  { company: 'AlphaSec', status: 'closed_won', value: 2500, contact: daysAgo(2), score: 95, leg: 'approved', sec: 'approved', bud: 'approved', exec: 'approved', stack: ['Cloudflare WAF', 'AWS GuardDuty'] },
+  { company: 'Beta Infra', status: 'pilot_active', value: 1500, contact: daysAgo(1), score: 85, leg: 'approved', sec: 'pending', bud: 'pending', exec: 'approved', stack: ['Cloudflare WAF', 'AWS GuardDuty', 'PagerDuty'] },
+  { company: 'Gamma DevOps', status: 'pilot_offered', value: 3500, contact: daysAgo(5), score: 70, leg: 'blocked', sec: 'pending', bud: 'pending', exec: 'pending', stack: ['AWS GuardDuty', 'Slack'] },
+  { company: 'Delta Cyber', status: 'demo_completed', value: 1000, contact: daysAgo(10), score: 60, leg: 'pending', sec: 'pending', bud: 'pending', exec: 'pending', stack: ['Okta', 'Splunk'] },
+  { company: 'Epsilon Tech', status: 'lead', value: null, contact: daysAgo(16), score: null, leg: 'pending', sec: 'pending', bud: 'pending', exec: 'pending', stack: ['Azure Sentinel', 'Jira'] },
+  { company: 'Zeta Bank', status: 'closed_lost', value: 5000, contact: daysAgo(20), score: 40, leg: 'blocked', sec: 'blocked', bud: 'blocked', exec: 'blocked', stack: ['Palo Alto Networks', 'Splunk'] },
 ];
 
 const insertDeal = db.prepare(`
   INSERT INTO design_partner_pipeline 
-  (id, company_name, segment, contact_name, email, source, status, deal_value_estimate, champion_score, legal_status, security_review_status, budget_status, exec_sponsor_status, last_contact_at, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  (id, company_name, segment, contact_name, email, source, status, deal_value_estimate, champion_score, legal_status, security_review_status, budget_status, exec_sponsor_status, tech_stack_json, last_contact_at, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 for (const d of deals) {
   insertDeal.run(
     crypto.randomBytes(8).toString('hex'), d.company, 'MSSP', 'Jane Doe', 'jane@' + d.company.replace(' ','').toLowerCase() + '.com',
-    'Outbound', d.status, d.value, d.score, d.leg, d.sec, d.bud, d.exec, d.contact, daysAgo(30), now.toISOString()
+    'Outbound', d.status, d.value, d.score, d.leg, d.sec, d.bud, d.exec, JSON.stringify(d.stack), d.contact, daysAgo(30), now.toISOString()
   );
 }
 
@@ -167,5 +192,26 @@ const insertEvent = db.prepare(`
 
 insertEvent.run(crypto.randomBytes(8).toString('hex'), org.id, 'second_analyst_invited', now.toISOString());
 insertEvent.run(crypto.randomBytes(8).toString('hex'), org.id, 'second_integration_added', now.toISOString());
+
+// 5. GTM-4 Customer References & Objection Playbooks
+db.prepare('DELETE FROM customer_references').run();
+db.prepare('DELETE FROM objection_playbooks').run();
+
+const insertRef = db.prepare(`
+  INSERT INTO customer_references (id, company, segment, stack_json, metrics_json, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+insertRef.run(crypto.randomBytes(8).toString('hex'), 'AlphaSec', 'MSSP', JSON.stringify(['Cloudflare WAF', 'AWS GuardDuty']), JSON.stringify({ 'MTTR Reduced': '41%', 'Analyst Hours Saved': 120 }), now.toISOString());
+insertRef.run(crypto.randomBytes(8).toString('hex'), 'NovaInfra', 'DevOps', JSON.stringify(['AWS GuardDuty', 'Slack']), JSON.stringify({ 'Containment Rate': '58%', 'Escalations Prevented': 15 }), now.toISOString());
+insertRef.run(crypto.randomBytes(8).toString('hex'), 'SecureBank', 'Fintech', JSON.stringify(['Azure Sentinel', 'Okta']), JSON.stringify({ 'ROI': '2.5x in 30 days', 'Analyst Hours Saved': 45 }), now.toISOString());
+
+const insertPlaybook = db.prepare(`
+  INSERT INTO objection_playbooks (id, objection_type, trigger_words_json, response_strategy, recommended_docs_json, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Trust Gap', JSON.stringify(['risky', 'risk', 'hallucinate', 'ai concern']), 'Emphasize Deterministic Playbook Engine vs Probabilistic Triage.', JSON.stringify(['docs/security-faq.md', 'docs/ai-boundaries.md']), now.toISOString());
+insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Budget', JSON.stringify(['budget', 'expensive', 'price']), 'Shift focus to operational leverage and analyst hour reduction.', JSON.stringify(['/roi']), now.toISOString());
+insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Legal Slowdown', JSON.stringify(['legal', 'procurement', 'dpa']), 'Offer DPA Lite and scoped data retention to bypass heavy compliance.', JSON.stringify(['docs/dpa-lite.md', 'docs/data-retention.md']), now.toISOString());
+insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Compliance', JSON.stringify(['soc2', 'compliance', 'iso']), 'Share the compliance roadmap and tenant isolation architecture.', JSON.stringify(['docs/security-faq.md']), now.toISOString());
 
 console.log('Seeding complete.');

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TrendingUp, Activity, AlertTriangle, ShieldCheck, Clock, Users } from "lucide-react";
+import Link from 'next/link';
 
 export default function RevenueDashboard() {
   const [data, setData] = useState<any>(null);
@@ -237,7 +238,11 @@ export default function RevenueDashboard() {
                   <tr><td colSpan={6} className="px-6 py-8 text-center border-none">No active pilot deals found.</td></tr>
                 ) : procurementTracker.map((p: any) => (
                   <tr key={p.id} className="hover:bg-slate-800/30">
-                    <td className="px-6 py-4 font-medium text-slate-200">{p.company}</td>
+                    <td className="px-6 py-4 font-medium text-slate-200">
+                      <Link href={`/admin/revenue/deal/${p.id}`} className="hover:text-fuchsia-400 transition-colors">
+                        {p.company}
+                      </Link>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
                         p.legalStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :

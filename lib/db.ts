@@ -337,6 +337,7 @@ db.exec(`
     champion_score INTEGER,
     risk_of_stall TEXT,
     stakeholder_map_json TEXT,
+    tech_stack_json TEXT DEFAULT '[]',
     legal_status TEXT DEFAULT 'pending',
     security_review_status TEXT DEFAULT 'pending',
     budget_status TEXT DEFAULT 'pending',
@@ -348,6 +349,24 @@ db.exec(`
     notes TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS customer_references (
+    id TEXT PRIMARY KEY,
+    company TEXT NOT NULL,
+    segment TEXT NOT NULL,
+    stack_json TEXT NOT NULL,
+    metrics_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS objection_playbooks (
+    id TEXT PRIMARY KEY,
+    objection_type TEXT NOT NULL,
+    trigger_words_json TEXT NOT NULL,
+    response_strategy TEXT NOT NULL,
+    recommended_docs_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS report_snapshots (
