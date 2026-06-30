@@ -45,6 +45,11 @@ export default function RevenueDashboard() {
             GTM-2 Close Engine
           </h1>
           <p className="text-slate-400 mt-2">Pipeline Velocity, Objection Intelligence, and Pilot Health.</p>
+          <div className="mt-4">
+            <Link href="/admin/revenue/expansion" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500/20 transition-colors text-sm font-semibold">
+              <Activity className="w-4 h-4" /> Go to Expansion & Retention Engine
+            </Link>
+          </div>
         </header>
 
         {/* Top KPI Row */}

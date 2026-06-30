@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import db from '@/lib/db';
 import { verifyPilotToken } from '@/lib/hmac';
 import { Shield, Zap, Clock, Lock, Target, Workflow, Briefcase } from 'lucide-react';
+import Tracker from './Tracker';
 
 export default function ChampionKitPage({ params, searchParams }: { params: { org: string }, searchParams: { sig?: string } }) {
   const { org } = params;
@@ -22,6 +23,7 @@ export default function ChampionKitPage({ params, searchParams }: { params: { or
 
   return (
     <div className="min-h-screen bg-[#050816] text-slate-300 font-sans pb-24">
+      <Tracker orgId={org} sig={sig} />
       <div className="max-w-4xl mx-auto p-8 pt-16">
         
         {/* Header */}

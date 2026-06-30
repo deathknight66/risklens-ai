@@ -378,6 +378,29 @@ db.exec(`
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
+  CREATE TABLE IF NOT EXISTS stakeholder_map (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    department TEXT,
+    influence_score INTEGER DEFAULT 0,
+    is_champion INTEGER DEFAULT 0,
+    is_blocker INTEGER DEFAULT 0,
+    last_contact_at TEXT,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS deal_engagement_events (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    actor_hash TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    weight INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,

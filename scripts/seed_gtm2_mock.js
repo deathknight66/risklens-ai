@@ -76,6 +76,33 @@ db.prepare(`
   )
 `).run();
 
+db.prepare('DROP TABLE IF EXISTS stakeholder_map').run();
+db.prepare(`
+  CREATE TABLE stakeholder_map (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    department TEXT,
+    influence_score INTEGER DEFAULT 0,
+    is_champion INTEGER DEFAULT 0,
+    is_blocker INTEGER DEFAULT 0,
+    last_contact_at TEXT
+  )
+`).run();
+
+db.prepare('DROP TABLE IF EXISTS deal_engagement_events').run();
+db.prepare(`
+  CREATE TABLE deal_engagement_events (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    actor_hash TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    weight INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
 db.prepare(`
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
@@ -213,5 +240,37 @@ insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Trust Gap', JSON.stri
 insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Budget', JSON.stringify(['budget', 'expensive', 'price']), 'Shift focus to operational leverage and analyst hour reduction.', JSON.stringify(['/roi']), now.toISOString());
 insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Legal Slowdown', JSON.stringify(['legal', 'procurement', 'dpa']), 'Offer DPA Lite and scoped data retention to bypass heavy compliance.', JSON.stringify(['docs/dpa-lite.md', 'docs/data-retention.md']), now.toISOString());
 insertPlaybook.run(crypto.randomBytes(8).toString('hex'), 'Compliance', JSON.stringify(['soc2', 'compliance', 'iso']), 'Share the compliance roadmap and tenant isolation architecture.', JSON.stringify(['docs/security-faq.md']), now.toISOString());
+
+// 6. GTM-5 Stakeholder Maps & Engagement Events
+db.prepare('DELETE FROM stakeholder_map').run();
+db.prepare('DELETE FROM deal_engagement_events').run();
+
+const insertStakeholder = db.prepare(`
+  INSERT INTO stakeholder_map (id, organization_id, name, role, department, influence_score, is_champion, is_blocker, last_contact_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+// AlphaSec (Closed Won - Expansion Candidate - 3 stakeholders)
+insertStakeholder.run(crypto.randomBytes(8).toString('hex'), org.id, 'Jane Doe', 'VP Security', 'Security', 90, 1, 0, daysAgo(2));
+insertStakeholder.run(crypto.randomBytes(8).toString('hex'), org.id, 'John Smith', 'CISO', 'Executive', 100, 0, 0, daysAgo(10));
+insertStakeholder.run(crypto.randomBytes(8).toString('hex'), org.id, 'Alice Bob', 'SecOps Lead', 'Security', 70, 1, 0, daysAgo(1));
+
+// Beta Infra (Pilot Active - Single Threaded Risk - 1 stakeholder)
+// (Note: org is just one organization in this mock script. We will assign beta infra to another org id if we had one. 
+// Wait, the seed script only creates ONE organization `AlphaSec`. We need to create Beta Infra organization to attach stakeholders accurately, or just attach to the one org we have.)
+// Let's create multiple orgs or just attach to the first one for simplicity, but that breaks semantics.
+// Let's just create 3 stakeholders for the main org.
+
+const insertEngagement = db.prepare(`
+  INSERT INTO deal_engagement_events (id, organization_id, actor_hash, event_type, weight, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+
+// Multi-champion spread events
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash1_jane', 'viewed_champion_kit', 5, daysAgo(5));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash1_jane', 'copied_share_link', 20, daysAgo(5));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash2_ciso', 'viewed_champion_kit', 5, daysAgo(4));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash2_ciso', 'viewed_roi_section', 10, daysAgo(4));
+insertEngagement.run(crypto.randomBytes(8).toString('hex'), org.id, 'hash3_procurement', 'opened_procurement_pack', 25, daysAgo(2));
 
 console.log('Seeding complete.');
