@@ -36,6 +36,25 @@ export default function PlaybooksPage() {
     setLoading(false);
   };
 
+  const handleApprove = async (runId: string) => {
+    try {
+      const res = await fetch("/api/playbooks/runs/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId })
+      });
+      if (res.ok) {
+        fetchData(); // Refresh the runs list
+      } else {
+        const json = await res.json();
+        alert(json.error || "Failed to approve run");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error approving playbook run");
+    }
+  };
+
   const navItems = [
     { id: "playbooks", name: "DAG Templates", icon: GitGraph },
     { id: "runs", name: "Execution History", icon: PlayCircle },
@@ -88,9 +107,14 @@ export default function PlaybooksPage() {
                     <div>
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-bold text-slate-100">{pb.name}</h3>
-                        <span className={`px-2 py-0.5 rounded text-xs ${pb.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
-                          {pb.is_active ? 'Active' : 'Draft'}
-                        </span>
+                        <div className="flex gap-2">
+                          <span className={`px-2 py-0.5 rounded text-xs ${pb.execution_mode === 'fully_autonomous' ? 'bg-fuchsia-500/10 text-fuchsia-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                            {pb.execution_mode === 'fully_autonomous' ? 'Auto' : pb.execution_mode === 'approval_required' ? 'Approval' : 'Suggest'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${pb.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                            {pb.is_active ? 'Active' : 'Draft'}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-sm text-slate-400 mb-4">{pb.description}</p>
                     </div>
@@ -128,6 +152,16 @@ export default function PlaybooksPage() {
                           {r.status === 'failed' && <span className="text-rose-400 bg-rose-400/10 px-2 py-1 rounded text-xs flex items-center gap-1 w-fit"><XCircle className="w-3 h-3"/> Failed</span>}
                           {r.status === 'rolled_back' && <span className="text-amber-400 bg-amber-400/10 px-2 py-1 rounded text-xs flex items-center gap-1 w-fit"><Clock className="w-3 h-3"/> Rolled Back</span>}
                           {r.status === 'running' && <span className="text-fuchsia-400 bg-fuchsia-400/10 px-2 py-1 rounded text-xs flex items-center gap-1 w-fit"><Activity className="w-3 h-3 animate-pulse"/> Running</span>}
+                          {r.status === 'suggested' && <span className="text-slate-400 bg-slate-400/10 px-2 py-1 rounded text-xs flex items-center gap-1 w-fit"><GitGraph className="w-3 h-3"/> Suggested</span>}
+                          {r.status === 'pending_approval' && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-400 bg-amber-400/10 px-2 py-1 rounded text-xs flex items-center gap-1 w-fit"><Lock className="w-3 h-3"/> Pending Approval</span>
+                              <button onClick={(e) => { e.stopPropagation(); handleApprove(r.id); }} className="text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 px-2 py-1 rounded">
+                                Approve
+                              </button>
+                            </div>
+                          )}
+                          {r.status === 'expired' && <span className="text-slate-500 bg-slate-500/10 px-2 py-1 rounded text-xs flex items-center gap-1 w-fit"><Clock className="w-3 h-3"/> Expired</span>}
                         </td>
                         <td className="px-6 py-4">{new Date(r.started_at).toLocaleString()}</td>
                       </tr>

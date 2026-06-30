@@ -85,10 +85,26 @@ export class PlaybookEngine {
 
     // 2. Initialize Run
     const runId = `pbr_${crypto.randomBytes(8).toString('hex')}`;
+    const now = new Date();
+    
+    let initialStatus = 'running';
+    let expiresAt = null;
+    if (playbook.execution_mode === 'suggest_only') initialStatus = 'suggested';
+    if (playbook.execution_mode === 'approval_required') {
+      initialStatus = 'pending_approval';
+      expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    }
+
+    const approvalSnapshot = JSON.stringify({
+      context,
+      playbook_hash: playbook.playbook_hash,
+      dag_json: playbook.dag_json
+    });
+
     db.prepare(`
-      INSERT INTO playbook_runs (id, organization_id, playbook_id, incident_id, execution_key, status, started_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(runId, playbook.organization_id, playbook.id, incidentId, executionKey, 'running', new Date().toISOString());
+      INSERT INTO playbook_runs (id, organization_id, playbook_id, incident_id, execution_key, status, approval_snapshot_json, started_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(runId, playbook.organization_id, playbook.id, incidentId, executionKey, initialStatus, approvalSnapshot, now.toISOString(), expiresAt);
 
     // Beta Telemetry
     const { BetaTelemetry } = require('@/lib/engine/telemetry');
@@ -96,6 +112,49 @@ export class PlaybookEngine {
       BetaTelemetry.track(playbook.organization_id, 'first_playbook_run', undefined, undefined, { playbookId });
     }
 
+    if (initialStatus !== 'running') {
+      console.log(`[PLAYBOOK] Run ${runId} paused with status: ${initialStatus}`);
+      return; // Halt execution for suggest_only or approval_required
+    }
+
+    await this._runDAG(runId, playbook, context);
+  }
+
+  /**
+   * Approves a pending playbook run and begins execution
+   */
+  static async approveRun(runId: string) {
+    const run = db.prepare('SELECT * FROM playbook_runs WHERE id = ?').get(runId) as any;
+    if (!run || run.status !== 'pending_approval') {
+      throw new Error('Run not found or not pending approval');
+    }
+
+    if (run.expires_at && new Date(run.expires_at) < new Date()) {
+      db.prepare('UPDATE playbook_runs SET status = ? WHERE id = ?').run('expired', runId);
+      throw new Error('Playbook approval has expired (24h limit)');
+    }
+
+    db.prepare('UPDATE playbook_runs SET status = ? WHERE id = ?').run('running', runId);
+    
+    const playbook = db.prepare('SELECT * FROM playbooks WHERE id = ?').get(run.playbook_id) as any;
+    const snapshot = JSON.parse(run.approval_snapshot_json || '{}');
+    const context = snapshot.context || {};
+
+    // Re-verify hash to ensure playbook wasn't maliciously altered post-approval
+    if (playbook.playbook_hash && playbook.playbook_hash !== snapshot.playbook_hash) {
+      db.prepare('UPDATE playbook_runs SET status = ? WHERE id = ?').run('failed', runId);
+      throw new Error('Playbook signature mismatch: The playbook was modified after approval.');
+    }
+
+    // Run in background so API can return immediately
+    this._runDAG(runId, playbook, context).catch(console.error);
+    return true;
+  }
+
+  /**
+   * Internal DAG Traversal Logic
+   */
+  private static async _runDAG(runId: string, playbook: any, context: any) {
     const dag: PlaybookDAG = JSON.parse(playbook.dag_json);
     
     // Identify Start Nodes (nodes with no incoming edges)

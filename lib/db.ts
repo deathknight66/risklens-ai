@@ -235,6 +235,8 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT,
     dag_json TEXT NOT NULL,
+    playbook_hash TEXT,
+    execution_mode TEXT NOT NULL DEFAULT 'fully_autonomous',
     is_active INTEGER DEFAULT 1,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -249,7 +251,9 @@ db.exec(`
     incident_id TEXT NOT NULL,
     execution_key TEXT UNIQUE NOT NULL,
     status TEXT NOT NULL,
+    approval_snapshot_json TEXT,
     started_at TEXT NOT NULL,
+    expires_at TEXT,
     completed_at TEXT,
     FOREIGN KEY(organization_id) REFERENCES organizations(id),
     FOREIGN KEY(playbook_id) REFERENCES playbooks(id),
@@ -317,6 +321,34 @@ db.exec(`
     price_anchor REAL,
     created_at TEXT NOT NULL,
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS design_partner_pipeline (
+    id TEXT PRIMARY KEY,
+    company_name TEXT NOT NULL,
+    segment TEXT NOT NULL,
+    contact_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    source TEXT NOT NULL,
+    status TEXT NOT NULL,
+    pain_score INTEGER,
+    urgency_score INTEGER,
+    last_contact_at TEXT,
+    next_followup_at TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sales_objections (
+    id TEXT PRIMARY KEY,
+    company TEXT NOT NULL,
+    objection_type TEXT NOT NULL,
+    exact_words TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    resolved INTEGER DEFAULT 0,
+    notes TEXT,
+    created_at TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS users (
