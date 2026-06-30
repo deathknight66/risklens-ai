@@ -333,11 +333,33 @@ db.exec(`
     status TEXT NOT NULL,
     pain_score INTEGER,
     urgency_score INTEGER,
+    deal_value_estimate INTEGER,
+    champion_score INTEGER,
+    risk_of_stall TEXT,
+    stakeholder_map_json TEXT,
     last_contact_at TEXT,
+    next_action_at TEXT,
+    decision_deadline TEXT,
     next_followup_at TEXT,
     notes TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS pilot_success_metrics (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    incidents_ingested INTEGER DEFAULT 0,
+    analyses_completed INTEGER DEFAULT 0,
+    playbooks_triggered INTEGER DEFAULT 0,
+    analyst_hours_saved REAL DEFAULT 0,
+    mttr_delta_minutes REAL DEFAULT 0,
+    prevented_escalations INTEGER DEFAULT 0,
+    containment_rate REAL DEFAULT 0,
+    time_to_first_value_minutes REAL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
   CREATE TABLE IF NOT EXISTS sales_objections (
