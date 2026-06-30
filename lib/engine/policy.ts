@@ -110,6 +110,28 @@ export class PolicyEngine {
             console.error(`[POLICY ENGINE] Failed to execute action ${recommendedActionId}:`, err);
           });
           
+          // Handle Dispatch Outbound integrations (Phase 5.0)
+          const policyActions = JSON.parse(policy.actions_json);
+          for (const action of policyActions) {
+            if (action.type === 'notify_destination' && action.target) {
+              const { DispatchEngine } = require('@/lib/dispatch');
+              const orgId = policy.organization_id;
+              // Fetch incident details to send
+              const incident = db.prepare('SELECT id, title, severity, summary FROM incidents WHERE id = ?').get(incidentId) as any;
+              
+              if (incident) {
+                const url = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/investigation?id=${incident.id}`;
+                DispatchEngine.send(action.target, {
+                  incidentId: incident.id,
+                  title: incident.title,
+                  severity: incident.severity,
+                  summary: incident.summary || 'No summary generated yet.',
+                  url
+                }).catch((e: any) => console.error("Dispatch Error:", e));
+              }
+            }
+          }
+
           // Stop evaluating further policies to prevent conflicting actions
           break;
         }

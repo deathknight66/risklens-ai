@@ -267,6 +267,31 @@ db.exec(`
     count INTEGER NOT NULL DEFAULT 0,
     reset_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS destinations (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    webhook_url TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS delivery_logs (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    destination_id TEXT NOT NULL,
+    incident_id TEXT,
+    status TEXT NOT NULL,
+    provider_response TEXT,
+    attempts INTEGER DEFAULT 1,
+    next_retry_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id),
+    FOREIGN KEY(destination_id) REFERENCES destinations(id)
+  );
 `);
 
 // Upgrade existing tables safely
