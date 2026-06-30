@@ -6,7 +6,9 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "risklens_secret_key_for_development" })
   const isAuthPage = req.nextUrl.pathname.startsWith('/login')
   const isDashboard = req.nextUrl.pathname.startsWith('/dashboard')
-  const isApi = req.nextUrl.pathname.startsWith('/api') && !req.nextUrl.pathname.startsWith('/api/auth')
+  const isApi = req.nextUrl.pathname.startsWith('/api') 
+    && !req.nextUrl.pathname.startsWith('/api/auth') 
+    && !req.nextUrl.pathname.startsWith('/api/ingest');
 
   if (!token && (isDashboard || isApi)) {
     if (isApi) {

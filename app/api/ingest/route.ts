@@ -51,15 +51,20 @@ export async function POST(request: Request) {
     db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(new Date().toISOString(), keyRecord.id);
 
     const data = await request.json();
-    const rawLogs: string = data.logs || '';
-    const sourceType: string = data.sourceType || 'unknown';
+    const rawLogs = data.logs;
+    const sourceType: string = data.sourceType || 'json';
 
-    if (!rawLogs) {
+    if (!rawLogs || (typeof rawLogs === 'string' && rawLogs.trim() === '') || (Array.isArray(rawLogs) && rawLogs.length === 0)) {
       return NextResponse.json({ error: 'No logs provided' }, { status: 400 });
     }
 
     // 1. Parse into individual log lines (if it's a bulk text upload)
-    const rawLines = rawLogs.split('\n').filter(line => line.trim().length > 0);
+    let rawLines: string[] = [];
+    if (typeof rawLogs === 'string') {
+      rawLines = rawLogs.split('\n').filter(line => line.trim().length > 0);
+    } else if (Array.isArray(rawLogs)) {
+      rawLines = rawLogs.map(log => typeof log === 'string' ? log : JSON.stringify(log));
+    }
     
     // Hash-based Deduplication to prevent flood
     const uniqueMap = new Map();
@@ -73,6 +78,19 @@ export async function POST(request: Request) {
     
     // 2. Normalize
     const normalizedLogs = logLines.map(line => normalizeEvent(line, sourceType));
+
+    // Cross-request payload deduplication (5 minute window)
+    const payloadHash = crypto.createHash('sha256').update(JSON.stringify(normalizedLogs.map(l => l.payload))).digest('hex');
+    const existingReq = db.prepare('SELECT count FROM rate_limits WHERE key_hash = ?').get('dedup_' + payloadHash) as any;
+    if (existingReq) {
+      // Refresh the expiration
+      db.prepare('UPDATE rate_limits SET reset_at = ? WHERE key_hash = ?').run(Date.now() + 300000, 'dedup_' + payloadHash);
+      return NextResponse.json({ 
+        success: true, 
+        summary: { logsParsed: normalizedLogs.length, alertsDetected: 0, incidentsCreated: 0, deduplicated: true } 
+      });
+    }
+    db.prepare('INSERT INTO rate_limits (key_hash, count, reset_at) VALUES (?, 1, ?)').run('dedup_' + payloadHash, Date.now() + 300000);
 
     // 3. Detect Alerts
     const alerts = runDetectionRules(normalizedLogs);
