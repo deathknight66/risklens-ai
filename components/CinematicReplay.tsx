@@ -10,6 +10,10 @@ export default function CinematicReplay({ incidentId }: { incidentId: string }) 
   const [loading, setLoading] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const stopPlayback = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
   useEffect(() => {
     fetchReplayData();
     return () => stopPlayback();
@@ -28,10 +32,6 @@ export default function CinematicReplay({ incidentId }: { incidentId: string }) 
       console.error("Failed to fetch replay data", e);
     }
     setLoading(false);
-  };
-
-  const stopPlayback = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
   };
 
   useEffect(() => {
