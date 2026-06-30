@@ -110,7 +110,7 @@ export class PolicyEngine {
             console.error(`[POLICY ENGINE] Failed to execute action ${recommendedActionId}:`, err);
           });
           
-          // Handle Dispatch Outbound integrations (Phase 5.0)
+          // Handle Dispatch Outbound integrations (Phase 5.0) and Playbooks (Phase 5.2)
           const policyActions = JSON.parse(policy.actions_json);
           for (const action of policyActions) {
             if (action.type === 'notify_destination' && action.target) {
@@ -129,6 +129,13 @@ export class PolicyEngine {
                   url
                 }).catch((e: any) => console.error("Dispatch Error:", e));
               }
+            } else if (action.type === 'execute_playbook' && action.playbook_id) {
+               // 5.2 Autonomous Playbooks integration
+               const { PlaybookEngine } = require('@/lib/engine/playbooks');
+               // Execute asynchronously
+               PlaybookEngine.execute(action.playbook_id, incidentId, context).catch((e: any) => {
+                 console.error(`[POLICY ENGINE] Playbook execution failed:`, e);
+               });
             }
           }
 
