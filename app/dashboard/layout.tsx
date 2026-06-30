@@ -19,7 +19,8 @@ import {
   Database,
   User,
   LogOut,
-  CreditCard
+  CreditCard,
+  Network
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSession, signOut } from 'next-auth/react'
@@ -33,6 +34,7 @@ const sidebarItems = [
   { label: 'Actions', icon: Zap, href: '/dashboard/actions', roles: ['Org Admin', 'SOC Analyst'] },
   { label: 'Ingestion', icon: Database, href: '/dashboard/ingestion', roles: ['Org Admin', 'SOC Analyst'] },
   { label: 'Reports', icon: FileText, href: '/dashboard/reports', roles: ['Org Admin', 'SOC Analyst', 'Board Member'] },
+  { label: 'Integrations', icon: Network, href: '/dashboard/integrations', roles: ['Org Admin'] },
   { label: 'Billing', icon: CreditCard, href: '/dashboard/billing', roles: ['Org Admin'] },
 ]
 
