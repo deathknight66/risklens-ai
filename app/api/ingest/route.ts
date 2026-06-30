@@ -6,6 +6,7 @@ import { runDetectionRules } from '@/lib/engine/rules';
 import { groupAlertsIntoIncident } from '@/lib/engine/aggregator';
 import { generateId } from '@/lib/engine/types';
 import { recordUsage } from '@/lib/engine/metering';
+import { checkQuota } from '@/lib/billing/quota';
 
 export const dynamic = 'force-dynamic';
 

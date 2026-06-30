@@ -18,10 +18,12 @@ import {
   Zap,
   Database,
   User,
-  LogOut
+  LogOut,
+  CreditCard
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSession, signOut } from 'next-auth/react'
+import WorkspaceSwitcher from '@/components/WorkspaceSwitcher'
 
 const sidebarItems = [
   { label: 'SOC View', icon: LayoutDashboard, href: '/dashboard/soc', roles: ['Org Admin', 'SOC Analyst'] },
@@ -31,6 +33,7 @@ const sidebarItems = [
   { label: 'Actions', icon: Zap, href: '/dashboard/actions', roles: ['Org Admin', 'SOC Analyst'] },
   { label: 'Ingestion', icon: Database, href: '/dashboard/ingestion', roles: ['Org Admin', 'SOC Analyst'] },
   { label: 'Reports', icon: FileText, href: '/dashboard/reports', roles: ['Org Admin', 'SOC Analyst', 'Board Member'] },
+  { label: 'Billing', icon: CreditCard, href: '/dashboard/billing', roles: ['Org Admin'] },
 ]
 
 export default function DashboardLayout({
@@ -202,10 +205,8 @@ export default function DashboardLayout({
           {/* Right: notifications + avatar */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
-                <User className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-semibold text-slate-300">{role}</span>
-              </div>
+              <WorkspaceSwitcher />
+              
               <button onClick={() => signOut()} className="p-2 text-slate-400 hover:text-rose-400 transition-colors">
                 <LogOut className="w-5 h-5" />
               </button>

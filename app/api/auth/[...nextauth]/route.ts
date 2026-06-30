@@ -58,13 +58,42 @@ export const authOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, trigger, session }: any) {
       if (user) {
         token.role = user.role;
         token.id = user.id;
         token.activeOrganizationId = user.activeOrganizationId;
         token.memberships = user.memberships;
       }
+
+      if (trigger === "update" && session?.activeOrganizationId) {
+        const targetOrgId = session.activeOrganizationId;
+        const membership = token.memberships?.find((m: any) => m.organization_id === targetOrgId);
+        
+        if (!membership) {
+          throw new Error("Unauthorized workspace switch");
+        }
+
+        // Audit Log (Rule C)
+        try {
+          db.prepare('INSERT INTO auth_logs (id, organization_id, user_id, ip, user_agent, login_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+            `log_${crypto.randomBytes(8).toString('hex')}`,
+            targetOrgId,
+            token.id,
+            'internal_switch',
+            'internal_switch',
+            new Date().toISOString(),
+            `Switched from ${token.activeOrganizationId}`
+          );
+        } catch (e) {
+          console.error("Failed to log tenant switch", e);
+        }
+
+        // Rotate context and role (Rule B)
+        token.activeOrganizationId = targetOrgId;
+        token.role = membership.role;
+      }
+
       return token;
     },
     async session({ session, token }: any) {

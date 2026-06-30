@@ -4,8 +4,8 @@ import path from 'path';
 // Setup database connection
 // In a real production scenario, this would be a Postgres connection pool.
 // For this POC, we use a local SQLite file.
-const isProd = process.env.NODE_ENV === 'production';
-const dbPath = isProd ? '/tmp/risklens.db' : path.join(process.cwd(), 'risklens.db');
+const isVercel = !!process.env.VERCEL;
+const dbPath = process.env.DATABASE_URL || (isVercel ? '/tmp/risklens.db' : path.join(process.cwd(), 'risklens.db'));
 const db = new Database(dbPath, { verbose: console.log });
 
 db.pragma('journal_mode = WAL');
@@ -36,10 +36,37 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS subscriptions (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL DEFAULT 'free',
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
     status TEXT NOT NULL,
     current_period_end TEXT,
+    cancel_at_period_end INTEGER DEFAULT 0,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    stripe_invoice_id TEXT UNIQUE NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    usage_snapshot TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    currency TEXT NOT NULL,
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    status TEXT NOT NULL,
+    hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS billing_logs (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    payload TEXT,
+    created_at TEXT NOT NULL,
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
@@ -52,6 +79,19 @@ db.exec(`
     action_executions INTEGER DEFAULT 0,
     token_usage INTEGER DEFAULT 0,
     UNIQUE(organization_id, period_month),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS invitations (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    role TEXT NOT NULL,
+    token_hash TEXT UNIQUE NOT NULL,
+    invited_by TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
@@ -204,6 +244,11 @@ db.exec(`
     reset_at INTEGER NOT NULL
   );
 `);
+
+// Upgrade existing tables safely
+try { db.exec("ALTER TABLE organizations ADD COLUMN stripe_customer_id TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN billing_email TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN grace_until TEXT;"); } catch (e) {}
 
 // Seed Default Organization
 const checkOrgs = db.prepare('SELECT COUNT(*) as count FROM organizations').get() as any;

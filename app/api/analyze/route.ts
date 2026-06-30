@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { recordUsage } from '@/lib/engine/metering';
+import { checkQuota } from '@/lib/billing/quota';
 
 export async function POST(req: Request) {
   try {
@@ -21,6 +22,12 @@ export async function POST(req: Request) {
 
     if (!incidentId) {
       return NextResponse.json({ error: 'Missing incidentId' }, { status: 400 });
+    }
+
+    // Quota Enforcement
+    const quota = await checkQuota(orgId, 'aiAnalyses', 1);
+    if (!quota.allowed) {
+      return NextResponse.json({ error: quota.reason }, { status: 402 });
     }
 
     // Fetch the incident
