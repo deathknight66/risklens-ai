@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 export default function BillingClient({ currentPlanId, stats, invoices, plans }: any) {
   const [upgrading, setUpgrading] = useState("");
+  const [loadingPortal, setLoadingPortal] = useState(false);
   const router = useRouter();
 
   const handleUpgrade = async (planId: string) => {
@@ -33,6 +34,27 @@ export default function BillingClient({ currentPlanId, stats, invoices, plans }:
     }
   };
 
+  const handlePortal = async () => {
+    setLoadingPortal(true);
+    try {
+      const res = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnUrl: window.location.href })
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Failed to launch portal");
+        setLoadingPortal(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setLoadingPortal(false);
+    }
+  };
+
   const planTiers = ["starter", "growth", "enterprise"];
 
   return (
@@ -46,7 +68,17 @@ export default function BillingClient({ currentPlanId, stats, invoices, plans }:
 
       {/* Plans */}
       <div>
-        <h2 className="text-xl font-bold text-slate-100 mb-6">Subscription Plans</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-slate-100">Subscription Plans</h2>
+          <button
+            onClick={handlePortal}
+            disabled={loadingPortal}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+          >
+            {loadingPortal ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+            Manage Billing & Cards
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {planTiers.map((pid) => {
             const plan = plans[pid];

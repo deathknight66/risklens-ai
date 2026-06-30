@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
     // 2. Create Organization (Hardening C: Slug Resolver)
     const slug = generateUniqueSlug(company);
-    const planId = 'free'; // Default to free tier
+    const planId = 'starter'; // Default to starter trial
     db.prepare('INSERT INTO organizations (id, name, slug, plan, status, created_at, billing_email) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       orgId, company.trim(), slug, planId, 'active', now, email
     );
@@ -88,14 +88,14 @@ export async function POST(req: Request) {
       `mem_${crypto.randomBytes(8).toString('hex')}`, userId, orgId, 'Org Admin'
     );
 
-    // 4. Provision Subscription
+    // 4. Provision Subscription (14-day trial)
     const periodEnd = new Date();
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    periodEnd.setDate(periodEnd.getDate() + 14);
     db.prepare(`
       INSERT INTO subscriptions (id, organization_id, plan_id, status, current_period_end)
       VALUES (?, ?, ?, ?, ?)
     `).run(
-      `sub_trial_${crypto.randomBytes(6).toString('hex')}`, orgId, planId, 'active', periodEnd.toISOString()
+      `sub_trial_${crypto.randomBytes(6).toString('hex')}`, orgId, planId, 'trialing', periodEnd.toISOString()
     );
 
     // 5. Hardening D: Seed Starter Policies

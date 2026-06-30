@@ -6,6 +6,18 @@ export async function checkQuota(organizationId: string, metric: 'logsIngested' 
   const org = db.prepare('SELECT plan, grace_until FROM organizations WHERE id = ?').get(organizationId) as any;
   if (!org) return { allowed: false, reason: 'Organization not found' };
 
+  // Fetch the active subscription for the org
+  const sub = db.prepare('SELECT status, current_period_end FROM subscriptions WHERE organization_id = ? ORDER BY current_period_end DESC LIMIT 1').get(organizationId) as any;
+  
+  if (sub) {
+    if (sub.status === 'canceled') {
+      return { allowed: false, reason: 'Subscription is canceled. Account is in archive mode.' };
+    }
+    if (sub.status === 'past_due' && (!org.grace_until || new Date(org.grace_until) < new Date())) {
+      return { allowed: false, reason: 'Subscription is past due and grace period expired.' };
+    }
+  }
+
   // Hardening D: Grace period enforcement
   if (org.grace_until && new Date(org.grace_until) < new Date()) {
     return { allowed: false, reason: 'Account suspended. Grace period expired. Please update billing.' };
