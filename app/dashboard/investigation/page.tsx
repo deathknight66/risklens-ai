@@ -24,6 +24,7 @@ import {
   Check
 } from "lucide-react";
 import { aiChatMessages } from "@/lib/mock-data";
+import CinematicReplay from "@/components/CinematicReplay";
 
 function MarkdownContent({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -253,6 +254,10 @@ export default function InvestigationPage() {
               </div>
             )}
           </div>
+
+          {selectedInvestigation && (
+            <CinematicReplay incidentId={selectedInvestigation.id || selectedInvestigation.incidentId} />
+          )}
 
           {selectedInvestigation && !aiSummary && (
             <div className="glass rounded-xl p-12 flex flex-col items-center justify-center text-center relative overflow-hidden border-cyan-500/30">
