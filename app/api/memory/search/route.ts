@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     `).all(incidentId, orgId);
 
     // Call the memory search engine
-    const similarIncidents = await searchSimilarIncidents(incidentId, analysisResult, logs);
+    const similarIncidents = await searchSimilarIncidents(incidentId, orgId, analysisResult, logs);
 
     return NextResponse.json({ success: true, similarIncidents });
   } catch (error: any) {

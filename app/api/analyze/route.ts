@@ -95,14 +95,14 @@ export async function POST(req: Request) {
   );
 
     // Trigger memory storage asynchronously
-    storeIncidentMemory(incidentId, result, logs).catch(err => {
+    storeIncidentMemory(incidentId, orgId, result, logs).catch(err => {
       console.error("Failed to store incident memory:", err);
     });
 
     // Run Decision Engine if confidence is sufficient
     if (result.analysisConfidence >= 0.45) {
       // Fetch similar incidents to calculate recurrence
-      const similar = await searchSimilarIncidents(incidentId, result, logs);
+      const similar = await searchSimilarIncidents(incidentId, orgId, result, logs);
       const recurrenceScore = similar.reduce((acc, curr) => acc + (curr.recurrenceScore || 0), 1);
       
       const sourceIps = [...new Set(logs.map((l: any) => l.source_ip).filter(Boolean))];

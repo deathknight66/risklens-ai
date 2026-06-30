@@ -58,7 +58,7 @@ function hexToUuid(hex: string): string {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
 }
 
-export async function storeIncidentMemory(incidentId: string, analysisResult: any, logs: any[]) {
+export async function storeIncidentMemory(incidentId: string, orgId: string, analysisResult: any, logs: any[]) {
   // Only store high confidence incidents
   if ((analysisResult.analysisConfidence || 0) < 0.45) {
     console.log(`Skipping memory storage for ${incidentId} due to low confidence.`);
@@ -115,6 +115,7 @@ export async function storeIncidentMemory(incidentId: string, analysisResult: an
 
     const payload = {
       incident_id: incidentId,
+      organization_id: orgId,
       fingerprint: fingerprint,
       summary: analysisResult.attackSummary,
       root_cause: analysisResult.rootCauseTree,
@@ -147,7 +148,7 @@ export async function storeIncidentMemory(incidentId: string, analysisResult: an
   }
 }
 
-export async function searchSimilarIncidents(incidentId: string, currentAnalysis: any, currentLogs: any[]) {
+export async function searchSimilarIncidents(incidentId: string, orgId: string, currentAnalysis: any, currentLogs: any[]) {
   const qdrant = getQdrant();
   await ensureCollectionExists();
 
@@ -167,8 +168,14 @@ export async function searchSimilarIncidents(incidentId: string, currentAnalysis
       vector: vector,
       limit: 5,
       with_payload: true,
-      // Do not return the exact same incident if it's already in DB
+      // Do not return the exact same incident if it's already in DB, and scope to orgId
       filter: {
+        must: [
+          {
+            key: "organization_id",
+            match: { value: orgId }
+          }
+        ],
         must_not: [
           {
             key: "incident_id",
