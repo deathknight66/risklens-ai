@@ -21,6 +21,12 @@ export default function SettingsPage() {
   const [exportFormat, setExportFormat] = useState("csv");
   const [exportTarget, setExportTarget] = useState("incidents");
 
+  const [idp, setIdp] = useState<any>(null);
+  const [ssoDomain, setSsoDomain] = useState("");
+  const [ssoProviderType, setSsoProviderType] = useState("okta");
+  const [ssoMetadataUrl, setSsoMetadataUrl] = useState("");
+  const [ssoLoading, setSsoLoading] = useState(false);
+
   const fetchInvites = async () => {
     const res = await fetch("/api/invitations");
     if (res.ok) {
@@ -37,9 +43,23 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchIdp = async () => {
+    const res = await fetch("/api/sso/config");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.id) {
+        setIdp(data);
+        setSsoDomain(data.domain);
+        setSsoProviderType(data.provider_type);
+        setSsoMetadataUrl(data.metadata_url || "");
+      }
+    }
+  };
+
   useEffect(() => {
     fetchInvites();
     fetchKeys();
+    fetchIdp();
   }, []);
 
   const handleInvite = async (e: any) => {
@@ -125,8 +145,30 @@ export default function SettingsPage() {
     window.location.href = `/api/export?target=${exportTarget}&format=${exportFormat}`;
   };
 
+  const handleSaveSSO = async (e: any) => {
+    e.preventDefault();
+    setSsoLoading(true);
+    try {
+      const res = await fetch("/api/sso/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: ssoDomain, providerType: ssoProviderType, metadataUrl: ssoMetadataUrl }),
+      });
+      if (res.ok) {
+        fetchIdp();
+        alert("SSO Configuration saved successfully!");
+      } else {
+        const data = await res.json();
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setSsoLoading(false);
+  };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-12">
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Organization Settings</h1>
         <p className="text-slate-400 mt-1">Manage your team and workspace configurations.</p>
@@ -337,6 +379,79 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Enterprise SSO Section */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden mt-8">
+        <div className="px-6 py-4 border-b border-slate-800 bg-slate-800/50">
+          <h2 className="text-lg font-semibold text-slate-200">Enterprise Single Sign-On (SAML)</h2>
+          <p className="text-sm text-slate-400 mt-1">Configure your Identity Provider to allow users to authenticate automatically via SSO.</p>
+        </div>
+        <div className="p-6">
+          <form onSubmit={handleSaveSSO} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Company Domain</label>
+                <input
+                  type="text"
+                  required
+                  value={ssoDomain}
+                  onChange={(e) => setSsoDomain(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="acme.com"
+                />
+                <p className="text-xs text-slate-500 mt-1">Users with this domain will be routed to your IdP.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Provider</label>
+                <select
+                  value={ssoProviderType}
+                  onChange={(e) => setSsoProviderType(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                >
+                  <option value="okta">Okta</option>
+                  <option value="entra">Microsoft Entra ID</option>
+                  <option value="google">Google Workspace</option>
+                  <option value="other">Other SAML 2.0</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Metadata URL</label>
+                <input
+                  type="url"
+                  value={ssoMetadataUrl}
+                  onChange={(e) => setSsoMetadataUrl(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="https://idp.example.com/metadata.xml"
+                />
+                <p className="text-xs text-slate-500 mt-1">Link to your IdP's XML metadata.</p>
+              </div>
+              
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={ssoLoading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+                >
+                  {ssoLoading ? "Saving..." : "Save Identity Provider Settings"}
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {idp && (
+            <div className="mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-400">SSO is active for {idp.domain}</p>
+                <p className="text-xs text-slate-400 mt-1">Your users can now log in using the SSO portal or SCIM.</p>
+              </div>
+              <div className="px-3 py-1 bg-indigo-500/20 rounded-full text-indigo-300 text-xs font-semibold">Active</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

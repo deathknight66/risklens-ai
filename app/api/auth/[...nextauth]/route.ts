@@ -10,9 +10,33 @@ export const authOptions = {
       name: "RiskLens Auth",
       credentials: {
         email: { label: "Email", type: "email", placeholder: "admin@risklens.local" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        sso_token: { label: "SSO Token", type: "text" }
       },
       async authorize(credentials, req) {
+        if (credentials?.sso_token) {
+          // JIT Provisioning via SAML Assertion
+          const { SSOProvider } = require('@/lib/auth/sso');
+          try {
+            const ssoSession = SSOProvider.verifySAMLAssertion(credentials.sso_token);
+            const user = db.prepare('SELECT * FROM users WHERE id = ?').get(ssoSession.userId) as any;
+            const memberships = db.prepare('SELECT * FROM memberships WHERE user_id = ?').all(user.id) as any[];
+            const activeMembership = memberships.find(m => m.organization_id === ssoSession.orgId) || memberships[0];
+            
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.email,
+              role: activeMembership.role,
+              activeOrganizationId: activeMembership.organization_id,
+              memberships
+            };
+          } catch (e: any) {
+            console.error("SSO Authorization failed:", e.message);
+            return null;
+          }
+        }
+
         if (!credentials?.email || !credentials?.password) {
           return null;
         }

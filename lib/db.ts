@@ -23,6 +23,30 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS identity_providers (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL UNIQUE,
+    provider_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    metadata_url TEXT,
+    entity_id TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS sso_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    idp_id TEXT NOT NULL,
+    login_at TEXT NOT NULL,
+    ip_address TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id),
+    FOREIGN KEY(idp_id) REFERENCES identity_providers(id)
+  );
+
   CREATE TABLE IF NOT EXISTS memberships (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

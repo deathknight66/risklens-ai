@@ -105,6 +105,25 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-700"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-[#111827] px-2 text-slate-500">OR</span>
+              </div>
+            </div>
+            
+            <button 
+              type="button"
+              onClick={() => router.push('/sso')}
+              className="w-full mt-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+            >
+              Sign in with SSO
+            </button>
+          </div>
+
         </div>
         
         {/* Helper text for demo purposes */}
