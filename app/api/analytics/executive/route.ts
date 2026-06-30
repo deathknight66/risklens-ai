@@ -1,18 +1,27 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions) as any;
+    if (!session || !session.user || !session.user.activeOrganizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = session.user.activeOrganizationId;
+
     const now = new Date();
     
     // 1. Action Success Rate
     const actionStats = db.prepare(`
       SELECT status, COUNT(*) as count 
       FROM actions 
+      WHERE organization_id = ? AND deleted_at IS NULL
       GROUP BY status
-    `).all() as any[];
+    `).all(orgId) as any[];
 
     let executed = 0;
     let failed = 0;
@@ -28,7 +37,7 @@ export async function GET() {
     });
 
     // Assume actions approved by PolicyEngine are automated
-    const autoStats = db.prepare(`SELECT COUNT(*) as count FROM actions WHERE approved_by LIKE 'PolicyEngine%'`).get() as any;
+    const autoStats = db.prepare(`SELECT COUNT(*) as count FROM actions WHERE organization_id = ? AND deleted_at IS NULL AND approved_by LIKE 'PolicyEngine%'`).get(orgId) as any;
     automated = autoStats.count;
     const automationRate = totalActions > 0 ? (automated / totalActions) * 100 : 0;
     const successRate = totalActions > 0 ? ((executed + rolledBack) / totalActions) * 100 : 0;
@@ -37,8 +46,8 @@ export async function GET() {
     const mttcData = db.prepare(`
       SELECT a.created_at as action_created, a.executed_at 
       FROM actions a
-      WHERE a.executed_at IS NOT NULL
-    `).all() as any[];
+      WHERE a.organization_id = ? AND a.deleted_at IS NULL AND a.executed_at IS NOT NULL
+    `).all(orgId) as any[];
 
     let totalContainmentTimeMs = 0;
     mttcData.forEach(act => {
@@ -51,8 +60,8 @@ export async function GET() {
     const criticalMitigated = db.prepare(`
       SELECT COUNT(*) as count FROM actions a
       JOIN incidents i ON a.incident_id = i.id
-      WHERE i.severity IN ('High', 'Critical') AND a.status IN ('Executed', 'Rolled Back')
-    `).get() as any;
+      WHERE a.organization_id = ? AND a.deleted_at IS NULL AND i.severity IN ('High', 'Critical') AND a.status IN ('Executed', 'Rolled Back')
+    `).get(orgId) as any;
     
     const lossAvoided = criticalMitigated.count * 150000; // $150k per critical mitigated
 
@@ -74,10 +83,11 @@ export async function GET() {
     const targetData = db.prepare(`
       SELECT target, COUNT(*) as attack_count 
       FROM actions 
+      WHERE organization_id = ? AND deleted_at IS NULL
       GROUP BY target 
       ORDER BY attack_count DESC 
       LIMIT 5
-    `).all() as any[];
+    `).all(orgId) as any[];
 
     const assetData = targetData.map(row => ({
       name: row.target,

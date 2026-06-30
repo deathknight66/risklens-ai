@@ -1,11 +1,19 @@
 import db from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const incidents = db.prepare('SELECT * FROM incidents ORDER BY created_at DESC').all();
+    const session = await getServerSession(authOptions) as any;
+    if (!session || !session.user || !session.user.activeOrganizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = session.user.activeOrganizationId;
+
+    const incidents = db.prepare('SELECT * FROM incidents WHERE organization_id = ? AND deleted_at IS NULL ORDER BY created_at DESC').all(orgId);
     
     const alertsStmt = db.prepare(`
       SELECT a.* 

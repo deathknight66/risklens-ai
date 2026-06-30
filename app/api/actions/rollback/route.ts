@@ -9,7 +9,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions) as any;
-    if (session?.user?.role === 'Board Member') {
+    if (!session || !session.user || !session.user.activeOrganizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = session.user.activeOrganizationId;
+
+    if (session.user.role === 'Board Member') {
       return NextResponse.json({ error: 'Unauthorized. Board Members cannot rollback actions.' }, { status: 403 });
     }
 
@@ -19,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing action ID' }, { status: 400 });
     }
 
-    const action: any = db.prepare('SELECT * FROM actions WHERE id = ?').get(actionId);
+    const action: any = db.prepare('SELECT * FROM actions WHERE id = ? AND organization_id = ? AND deleted_at IS NULL').get(actionId, orgId);
     if (!action) {
       return NextResponse.json({ error: 'Action not found' }, { status: 404 });
     }

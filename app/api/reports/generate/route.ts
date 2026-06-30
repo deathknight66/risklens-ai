@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import crypto from 'crypto';
 import OpenAI from 'openai';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +13,16 @@ export async function POST(req: Request) {
   });
 
   try {
+    const session = await getServerSession(authOptions) as any;
+    if (!session || !session.user || !session.user.activeOrganizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = session.user.activeOrganizationId;
+
     const { period } = await req.json();
 
     // 1. Gather all required metrics
-    const actionStats = db.prepare(`SELECT status, COUNT(*) as count FROM actions GROUP BY status`).all() as any[];
+    const actionStats = db.prepare(`SELECT status, COUNT(*) as count FROM actions WHERE organization_id = ? AND deleted_at IS NULL GROUP BY status`).all(orgId) as any[];
     let executed = 0; let rolledBack = 0; let totalActions = 0; let automated = 0;
     actionStats.forEach(stat => {
       totalActions += stat.count;
@@ -22,11 +30,11 @@ export async function POST(req: Request) {
       if (stat.status === 'Rolled Back') rolledBack += stat.count;
     });
 
-    const autoStats = db.prepare(`SELECT COUNT(*) as count FROM actions WHERE approved_by LIKE 'PolicyEngine%'`).get() as any;
+    const autoStats = db.prepare(`SELECT COUNT(*) as count FROM actions WHERE organization_id = ? AND deleted_at IS NULL AND approved_by LIKE 'PolicyEngine%'`).get(orgId) as any;
     automated = autoStats.count;
     const automationRate = totalActions > 0 ? (automated / totalActions) * 100 : 0;
 
-    const mttcData = db.prepare(`SELECT a.created_at, a.executed_at FROM actions a WHERE a.executed_at IS NOT NULL`).all() as any[];
+    const mttcData = db.prepare(`SELECT a.created_at, a.executed_at FROM actions a WHERE a.organization_id = ? AND a.deleted_at IS NULL AND a.executed_at IS NOT NULL`).all(orgId) as any[];
     let totalTimeMs = 0;
     mttcData.forEach(act => {
       totalTimeMs += (new Date(act.executed_at).getTime() - new Date(act.created_at).getTime());
@@ -36,13 +44,13 @@ export async function POST(req: Request) {
     const criticalMitigated = db.prepare(`
       SELECT COUNT(*) as count FROM actions a
       JOIN incidents i ON a.incident_id = i.id
-      WHERE i.severity IN ('High', 'Critical') AND a.status IN ('Executed', 'Rolled Back')
-    `).get() as any;
+      WHERE a.organization_id = ? AND a.deleted_at IS NULL AND i.severity IN ('High', 'Critical') AND a.status IN ('Executed', 'Rolled Back')
+    `).get(orgId) as any;
     const lossAvoided = criticalMitigated.count * 150000;
 
     const topIncidents = db.prepare(`
-      SELECT id, title, severity FROM incidents ORDER BY created_at DESC LIMIT 5
-    `).all();
+      SELECT id, title, severity FROM incidents WHERE organization_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 5
+    `).all(orgId);
 
     // Snapshot payload for the LLM
     const sourceSnapshot = {
@@ -92,6 +100,7 @@ Return JSON EXACTLY matching this schema:
     
     // 3. Compute Integrity Hash (Tamper-evident)
     const rawReportContent = JSON.stringify({
+      organization_id: orgId,
       snapshot: sourceSnapshot,
       summary: parsed.executiveSummary,
       recommendations: parsed.recommendedNextQuarterActions,
@@ -105,11 +114,12 @@ Return JSON EXACTLY matching this schema:
     // 4. Persist Report
     db.prepare(`
       INSERT INTO reports (
-        id, report_period, generated_at, prompt_version, source_snapshot_json, 
+        id, organization_id, report_period, generated_at, prompt_version, source_snapshot_json, 
         llm_summary, llm_recommendations, integrity_hash, risk_rating
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       reportId,
+      orgId,
       sourceSnapshot.period,
       generatedAt,
       "v1",

@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { searchSimilarIncidents } from '@/lib/engine/memory';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions) as any;
+    if (!session || !session.user || !session.user.activeOrganizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = session.user.activeOrganizationId;
+
     const { incidentId } = await req.json();
 
     if (!incidentId) {
@@ -13,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     // Fetch the incident
-    const incident = db.prepare('SELECT * FROM incidents WHERE id = ?').get(incidentId) as any;
+    const incident = db.prepare('SELECT * FROM incidents WHERE id = ? AND organization_id = ? AND deleted_at IS NULL').get(incidentId, orgId) as any;
     if (!incident) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
@@ -33,8 +41,8 @@ export async function POST(req: Request) {
     const logs = db.prepare(`
       SELECT l.* FROM logs l
       JOIN incidents i ON l.timestamp >= datetime(i.created_at, '-10 minutes') AND l.timestamp <= datetime(i.created_at, '+10 minutes')
-      WHERE i.id = ?
-    `).all(incidentId);
+      WHERE i.id = ? AND l.organization_id = ?
+    `).all(incidentId, orgId);
 
     // Call the memory search engine
     const similarIncidents = await searchSimilarIncidents(incidentId, analysisResult, logs);

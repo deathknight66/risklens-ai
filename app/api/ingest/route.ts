@@ -39,10 +39,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized. x-api-key header missing.' }, { status: 401 });
     }
 
-    const keyRecord = db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND revoked_at IS NULL').get(apiKey) as any;
+    const keyRecord = db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND status = ? AND revoked_at IS NULL').get(apiKey, 'active') as any;
     if (!keyRecord || (keyRecord.scope !== 'ingest_only' && keyRecord.scope !== 'admin_full')) {
       return NextResponse.json({ error: 'Unauthorized or invalid scope.' }, { status: 403 });
     }
+
+    const orgId = keyRecord.organization_id;
 
     if (!checkRateLimit(apiKey)) {
       return NextResponse.json({ error: 'Rate limit exceeded (100 req/min).' }, { status: 429 });
@@ -100,18 +102,18 @@ export async function POST(request: Request) {
 
     // 5. Store in DB
     const insertLog = db.prepare(`
-      INSERT OR IGNORE INTO logs (id, timestamp, source_ip, target, event_type, status, payload, source_type, raw_log)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO logs (id, organization_id, timestamp, source_ip, target, event_type, status, payload, source_type, raw_log)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertAlert = db.prepare(`
-      INSERT OR IGNORE INTO alerts (id, rule_name, severity, confidence, timestamp, source_ip, target, description, mitre_technique)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO alerts (id, organization_id, rule_name, severity, confidence, timestamp, source_ip, target, description, mitre_technique)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertIncident = db.prepare(`
-      INSERT OR IGNORE INTO incidents (id, title, severity, status, created_at, updated_at, summary)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO incidents (id, organization_id, title, severity, status, created_at, updated_at, summary)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const linkIncidentAlert = db.prepare(`
@@ -123,7 +125,8 @@ export async function POST(request: Request) {
       // Save Logs
       for (const log of normalizedLogs) {
         insertLog.run(
-          log.id, 
+          log.id,
+          orgId,
           log.timestamp, 
           log.sourceIP || null, 
           log.target || null, 
@@ -139,6 +142,7 @@ export async function POST(request: Request) {
       for (const alert of alerts) {
         insertAlert.run(
           alert.id,
+          orgId,
           alert.ruleName,
           alert.severity,
           alert.confidence,
@@ -154,6 +158,7 @@ export async function POST(request: Request) {
       for (const inc of incidents) {
         insertIncident.run(
           inc.id,
+          orgId,
           inc.title,
           inc.severity,
           inc.status,

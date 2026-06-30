@@ -2,17 +2,18 @@ import db from '@/lib/db';
 import { getAdapterForAction } from '@/lib/engine/decision';
 import crypto from 'crypto';
 
-export async function executeAction(actionId: string, approvedBy: string): Promise<{ success: boolean; response?: any; error?: string; details?: string }> {
+export async function executeAction(actionId: string, orgId: string, approvedBy: string): Promise<{ success: boolean; response?: any; error?: string; details?: string }> {
   // 1. Idempotency Lock (Atomic Update)
   const result = db.prepare(`
     UPDATE actions 
     SET status = ?, approved_by = ?, updated_at = ? 
-    WHERE id = ? AND status IN ('Awaiting Approval', 'AI Suggested')
+    WHERE id = ? AND organization_id = ? AND status IN ('Awaiting Approval', 'AI Suggested')
   `).run(
     'Executing',
     approvedBy,
     new Date().toISOString(),
-    actionId
+    actionId,
+    orgId
   );
 
   if (result.changes === 0) {

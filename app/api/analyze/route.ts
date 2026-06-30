@@ -5,9 +5,17 @@ import { storeIncidentMemory, searchSimilarIncidents } from '@/lib/engine/memory
 import { decideAction } from '@/lib/engine/decision';
 import { PolicyEngine } from '@/lib/engine/policy';
 import crypto from 'crypto';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions) as any;
+    if (!session || !session.user || !session.user.activeOrganizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = session.user.activeOrganizationId;
+
     const { incidentId } = await req.json();
 
     if (!incidentId) {
@@ -15,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     // Fetch the incident
-    const incident = db.prepare('SELECT * FROM incidents WHERE id = ?').get(incidentId) as any;
+    const incident = db.prepare('SELECT * FROM incidents WHERE id = ? AND organization_id = ? AND deleted_at IS NULL').get(incidentId, orgId) as any;
     if (!incident) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
@@ -42,9 +50,10 @@ export async function POST(req: Request) {
       result = await analyzeIncident(incident, logs);
     } catch (llmError: any) {
       console.error("LLM Analysis Failed (Dead Letter Queue):", llmError);
-      db.prepare(`UPDATE incidents SET status = 'analysis_failed', analyst_notes = ? WHERE id = ?`).run(
+      db.prepare(`UPDATE incidents SET status = 'analysis_failed', analyst_notes = ? WHERE id = ? AND organization_id = ?`).run(
         `Automated Analysis Failed: ${llmError.message}`, 
-        incidentId
+        incidentId,
+        orgId
       );
       return NextResponse.json({ success: false, error: 'Analysis failed and was queued for review.', details: llmError.message }, { status: 502 });
     }
@@ -69,20 +78,21 @@ export async function POST(req: Request) {
         token_usage = ?,
         analysis_cost = ?,
         analysis_confidence = ?,
-        updated_at = ?
-      WHERE id = ?
-    `).run(
-      result.attackSummary || null,
-      timeline_json,
-      mitre_tactics,
-      root_cause_tree,
-      result._meta?.promptVersion || 'v2.0',
-      total_tokens,
-      analysis_cost,
-      result.analysisConfidence || null,
-      new Date().toISOString(),
-      incidentId
-    );
+      updated_at = ?
+    WHERE id = ? AND organization_id = ?
+  `).run(
+    result.attackSummary || null,
+    timeline_json,
+    mitre_tactics,
+    root_cause_tree,
+    result._meta?.promptVersion || 'v2.0',
+    total_tokens,
+    analysis_cost,
+    result.analysisConfidence || null,
+    new Date().toISOString(),
+    incidentId,
+    orgId
+  );
 
     // Trigger memory storage asynchronously
     storeIncidentMemory(incidentId, result, logs).catch(err => {
@@ -115,11 +125,12 @@ export async function POST(req: Request) {
         
         db.prepare(`
           INSERT INTO actions (
-            id, incident_id, action_type, target, status, reason, decision_confidence, 
+            id, organization_id, incident_id, action_type, target, status, reason, decision_confidence, 
             simulation_payload, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           actionId,
+          orgId,
           incidentId,
           decision.recommendedAction,
           decision.target || 'unknown',
