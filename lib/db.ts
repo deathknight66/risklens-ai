@@ -337,6 +337,10 @@ db.exec(`
     champion_score INTEGER,
     risk_of_stall TEXT,
     stakeholder_map_json TEXT,
+    legal_status TEXT DEFAULT 'pending',
+    security_review_status TEXT DEFAULT 'pending',
+    budget_status TEXT DEFAULT 'pending',
+    exec_sponsor_status TEXT DEFAULT 'pending',
     last_contact_at TEXT,
     next_action_at TEXT,
     decision_deadline TEXT,
@@ -344,6 +348,15 @@ db.exec(`
     notes TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS report_snapshots (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    hash TEXT NOT NULL,
+    generated_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (

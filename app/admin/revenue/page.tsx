@@ -28,7 +28,7 @@ export default function RevenueDashboard() {
     return <div className="p-12 text-center text-slate-400">Failed to load data.</div>;
   }
 
-  const { funnel, weightedMrr, aging, pilotHealth, objectionWinRates } = data;
+  const { funnel, weightedMrr, aging, pilotHealth, objectionWinRates, procurementTracker, renewalTriggers } = data;
 
   const formatCurrency = (num: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
@@ -168,6 +168,106 @@ export default function RevenueDashboard() {
                         p.status === 'passive' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
                       }`}>
                         {p.score} ({p.status})
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Renewal Triggers & Expansion */}
+        {(renewalTriggers?.length > 0 || procurementTracker?.some((p: any) => p.expansionScore > 0)) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+            <div className="glass p-6 rounded-xl border border-emerald-500/50 bg-emerald-500/5">
+              <h2 className="font-semibold text-emerald-400 mb-4 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5" /> Active Renewal Triggers
+              </h2>
+              <div className="space-y-3">
+                {renewalTriggers?.map((r: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-slate-900/50 rounded border border-emerald-500/20 text-sm text-emerald-100">
+                    <span className="font-bold text-emerald-400">{r.organization}:</span> {r.message}
+                  </div>
+                ))}
+                {renewalTriggers?.length === 0 && <div className="text-slate-500 text-sm">No pilots have hit renewal thresholds yet.</div>}
+              </div>
+            </div>
+
+            <div className="glass p-6 rounded-xl border border-indigo-500/30 bg-indigo-500/5">
+              <h2 className="font-semibold text-indigo-400 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5" /> Expansion Signals
+              </h2>
+              <div className="space-y-3">
+                {procurementTracker?.filter((p: any) => p.expansionScore > 0).map((p: any) => (
+                  <div key={p.id} className="p-3 bg-slate-900/50 rounded border border-indigo-500/20 text-sm">
+                    <div className="font-bold text-indigo-300 mb-1">{p.company} <span className="text-indigo-500/70 text-xs">({p.expansionScore} pts)</span></div>
+                    <div className="flex gap-2 flex-wrap">
+                      {p.expansionSignals.map((sig: string, i: number) => (
+                        <span key={i} className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs">{sig}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Procurement Tracker & Close Probability */}
+        <div className="glass rounded-xl border border-slate-700/50 overflow-hidden mt-8">
+          <div className="bg-slate-800/50 p-4 border-b border-slate-700/50 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-fuchsia-400" />
+            <h2 className="font-semibold text-slate-200">Procurement Tracker & Close Probability</h2>
+          </div>
+          <div className="p-0 overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-400 min-w-[800px]">
+              <thead className="bg-slate-900/50 text-slate-300">
+                <tr>
+                  <th className="px-6 py-4 font-medium">Deal</th>
+                  <th className="px-6 py-4 font-medium">Legal Status</th>
+                  <th className="px-6 py-4 font-medium">Sec Review</th>
+                  <th className="px-6 py-4 font-medium">Budget</th>
+                  <th className="px-6 py-4 font-medium">Sponsor</th>
+                  <th className="px-6 py-4 font-medium text-right">Close Prob %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {(!procurementTracker || procurementTracker.length === 0) ? (
+                  <tr><td colSpan={6} className="px-6 py-8 text-center border-none">No active pilot deals found.</td></tr>
+                ) : procurementTracker.map((p: any) => (
+                  <tr key={p.id} className="hover:bg-slate-800/30">
+                    <td className="px-6 py-4 font-medium text-slate-200">{p.company}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                        p.legalStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
+                        p.legalStatus === 'blocked' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
+                      }`}>{p.legalStatus}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                        p.securityStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
+                        p.securityStatus === 'blocked' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
+                      }`}>{p.securityStatus}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                        p.budgetStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
+                        p.budgetStatus === 'blocked' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
+                      }`}>{p.budgetStatus}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                        p.execStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
+                        p.execStatus === 'blocked' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
+                      }`}>{p.execStatus}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${
+                        p.closeProbability > 75 ? 'text-emerald-400' :
+                        p.closeProbability > 40 ? 'text-amber-400' : 'text-rose-400'
+                      }`}>
+                        {p.closeProbability}%
                       </span>
                     </td>
                   </tr>

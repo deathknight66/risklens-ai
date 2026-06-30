@@ -70,13 +70,106 @@ export async function GET() {
 
       return {
         id: p.id,
+        orgId: p.organization_id,
         organization: p.org_name,
         score: Math.round(score),
         status,
         containmentRate: p.containment_rate,
-        ttfvMinutes: p.time_to_first_value_minutes
+        ttfvMinutes: p.time_to_first_value_minutes,
+        raw: p // keep raw metrics for renewal triggers
       };
     });
+
+    // Expansion Signals (Fetch from beta_events per org)
+    const expansionEvents = db.prepare(`
+      SELECT organization_id, event_type, COUNT(*) as c
+      FROM beta_events 
+      WHERE event_type IN ('second_analyst_invited', 'second_integration_added', 'second_api_key_created')
+      GROUP BY organization_id, event_type
+    `).all() as any[];
+
+    const expansionScores: Record<string, number> = {};
+    const expansionSignals: Record<string, string[]> = {};
+    for (const ev of expansionEvents) {
+      if (!expansionScores[ev.organization_id]) {
+        expansionScores[ev.organization_id] = 0;
+        expansionSignals[ev.organization_id] = [];
+      }
+      if (ev.event_type === 'second_analyst_invited') {
+        expansionScores[ev.organization_id] += 40;
+        expansionSignals[ev.organization_id].push('Second Analyst Invited');
+      }
+      if (ev.event_type === 'second_integration_added') {
+        expansionScores[ev.organization_id] += 35;
+        expansionSignals[ev.organization_id].push('Second Integration Added');
+      }
+      if (ev.event_type === 'second_api_key_created') {
+        expansionScores[ev.organization_id] += 25;
+        expansionSignals[ev.organization_id].push('Second API Key Created');
+      }
+    }
+
+    // Procurement Tracker & Close Probability Score
+    const procurementTracker = pipeline.filter(d => d.status === 'pilot_active' || d.status === 'pilot_offered').map(d => {
+      // Find associated pilot health
+      // We assume company_name matches organization name for this prototype (or we lookup by orgId)
+      const health = pilotHealth.find(p => p.organization === d.company_name);
+      const pilotScore = health ? health.score : 0;
+      // We assume orgId can be matched via company name, but for mock we'll just try to match it
+      const orgId = health ? health.orgId : 'unknown';
+      const expansionScore = expansionScores[orgId] || 0;
+      const signals = expansionSignals[orgId] || [];
+
+      let legalColor = 'green';
+      if (d.legal_status === 'blocked') legalColor = 'red';
+      else if (d.legal_status === 'pending') legalColor = 'yellow';
+
+      let securityColor = 'green';
+      if (d.security_review_status === 'blocked') securityColor = 'red';
+      else if (d.security_review_status === 'pending') securityColor = 'yellow';
+
+      let procurementProgress = 0;
+      if (d.legal_status === 'approved') procurementProgress += 30;
+      if (d.security_review_status === 'approved') procurementProgress += 30;
+      if (d.budget_status === 'approved') procurementProgress += 20;
+      if (d.exec_sponsor_status === 'approved') procurementProgress += 20;
+
+      // Close Probability Formula
+      // (Champion × 0.35) + (PilotHealth × 0.30) + (ProcurementProgress × 0.20) + (ExpansionSignals × 0.15)
+      const championScore = d.champion_score || 0;
+      const normalizedHealth = Math.min(100, (pilotScore / 50) * 100); // 50+ is healthy, treat 50 as 100%
+      const normalizedExpansion = Math.min(100, expansionScore);
+
+      const closeProbability = Math.round(
+        (championScore * 0.35) + 
+        (normalizedHealth * 0.30) + 
+        (procurementProgress * 0.20) + 
+        (normalizedExpansion * 0.15)
+      );
+
+      return {
+        id: d.id,
+        company: d.company_name,
+        legalStatus: d.legal_status,
+        securityStatus: d.security_review_status,
+        budgetStatus: d.budget_status,
+        execStatus: d.exec_sponsor_status,
+        legalColor,
+        securityColor,
+        closeProbability,
+        expansionScore,
+        expansionSignals: signals
+      };
+    });
+
+    // Renewal Trigger Engine
+    const renewalTriggers = pilotHealth.filter(p => {
+      // Containment > 40%, MTTR Delta > 25, Analyst Hours > 15
+      return p.raw.containment_rate > 40 && p.raw.mttr_delta_minutes > 25 && p.raw.analyst_hours_saved > 15;
+    }).map(p => ({
+      organization: p.organization,
+      message: `Renewal criteria met (Containment: ${p.raw.containment_rate}%, MTTR saved: ${p.raw.mttr_delta_minutes}m, Analyst Hours: ${p.raw.analyst_hours_saved}h). Conversion email drafted.`
+    }));
 
     // 4. Objection Win Rate
     // Group by objection_type
@@ -108,7 +201,9 @@ export async function GET() {
       weightedMrr: Math.round(weightedMrr),
       aging,
       pilotHealth,
-      objectionWinRates: objectionArray
+      objectionWinRates: objectionArray,
+      procurementTracker,
+      renewalTriggers
     });
 
   } catch (error: any) {
