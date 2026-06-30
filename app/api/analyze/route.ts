@@ -52,10 +52,20 @@ export async function POST(req: Request) {
       logs = db.prepare(`SELECT * FROM logs WHERE source_ip IN (${placeholders})`).all(...ips);
     }
 
+    // Fetch similar incidents BEFORE LLM to provide historical context
+    const initialSimilar = await searchSimilarIncidents(incidentId, orgId, {}, logs);
+    const historicalIncidents = initialSimilar.slice(0, 5).map(si => ({
+      title: si.incident.title,
+      summary: si.incident.summary,
+      severity: si.incident.severity,
+      created_at: si.incident.created_at,
+      score: si.score
+    }));
+
     // Call analyzeIncident with DLQ try/catch
     let result;
     try {
-      result = await analyzeIncident(incident, logs);
+      result = await analyzeIncident(incident, logs, historicalIncidents);
     } catch (llmError: any) {
       console.error("LLM Analysis Failed (Dead Letter Queue):", llmError);
       db.prepare(`UPDATE incidents SET status = 'analysis_failed', analyst_notes = ? WHERE id = ? AND organization_id = ?`).run(
@@ -110,14 +120,43 @@ export async function POST(req: Request) {
       console.error("Failed to store incident memory:", err);
     });
 
+    // 5.1 Intelligence Moat: Graph Edge Creation
+    if (result.clusterConfidence && result.clusterConfidence >= 0.70) {
+      const { MemoryGraph } = require('@/lib/ai/memory');
+      for (const hist of initialSimilar.slice(0, 3)) {
+        if (hist.score > 0.8) {
+           MemoryGraph.addEdge(orgId, incidentId, hist.incident.id, 'semantic_similarity', hist.score);
+        }
+      }
+    }
+
+    // 5.1 Intelligence Moat: Replay Auditability
+    if (historicalIncidents.length > 0) {
+      db.prepare('INSERT INTO billing_logs (id, organization_id, event_type, payload, created_at) VALUES (?, ?, ?, ?, ?)').run(
+        `blog_${crypto.randomBytes(8).toString('hex')}`, orgId, 'memory_replay_invoked', JSON.stringify({ count: historicalIncidents.length, incidentId }), new Date().toISOString()
+      );
+    }
+
     // Run Decision Engine if confidence is sufficient
     if (result.analysisConfidence >= 0.45) {
-      // Fetch similar incidents to calculate recurrence
-      const similar = await searchSimilarIncidents(incidentId, orgId, result, logs);
-      const recurrenceScore = similar.reduce((acc, curr) => acc + (curr.recurrenceScore || 0), 1);
-      
       const sourceIps = [...new Set(logs.map((l: any) => l.source_ip).filter(Boolean))];
       const targets = [...new Set(logs.map((l: any) => l.target).filter(Boolean))];
+      
+      const recurrenceScore = initialSimilar.reduce((acc, curr) => acc + (curr.recurrenceScore || 0), 1);
+
+      // 5.1 Predictive Escalation Scoring
+      const { ScoringEngine } = require('@/lib/ai/scoring');
+      const escalationContext = ScoringEngine.calculatePredictiveEscalation(
+        incident.severity,
+        initialSimilar.length,
+        result.mitreMappings?.length || 0,
+        50 // Blast radius mocked
+      );
+
+      // Inject into decision/policy loop (e.g., as part of result structure to front-end)
+      result.escalationScore = escalationContext.escalationScore;
+      result.riskBand = escalationContext.riskBand;
+      result.recommendEscalation = escalationContext.recommendEscalation;
 
       const decision = await decideAction({
         incidentId,

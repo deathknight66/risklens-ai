@@ -177,6 +177,20 @@ db.exec(`
     FOREIGN KEY(alert_id) REFERENCES alerts(id)
   );
 
+  CREATE TABLE IF NOT EXISTS incident_edges (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    source_incident_id TEXT NOT NULL,
+    target_incident_id TEXT NOT NULL,
+    relation_type TEXT NOT NULL,
+    confidence REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(organization_id, source_incident_id, target_incident_id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id),
+    FOREIGN KEY(source_incident_id) REFERENCES incidents(id),
+    FOREIGN KEY(target_incident_id) REFERENCES incidents(id)
+  );
+
   CREATE TABLE IF NOT EXISTS actions (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,

@@ -105,6 +105,26 @@ export async function GET() {
       { date: 'Sun', exposure: 800000, mitigated: 800000 },
     ];
 
+    // 8. Intelligence Moat: Threat Clusters
+    // Calculate total active memory edges to show the size of the organizational memory
+    const memoryEdgesCount = db.prepare(`SELECT COUNT(*) as count FROM incident_edges WHERE organization_id = ?`).get(orgId) as any;
+    const memoryEdges = memoryEdgesCount.count;
+
+    // Fetch recurring patterns from AI Summaries where available
+    const patterns = db.prepare(`
+      SELECT ai_summary FROM incidents 
+      WHERE organization_id = ? AND ai_summary IS NOT NULL AND ai_summary LIKE '%Campaign%'
+      LIMIT 10
+    `).all(orgId) as any[];
+
+    // Mock threat cluster distribution for the chart
+    const threatClusters = [
+      { name: 'Credential Abuse', volume: 45, impact: 'High' },
+      { name: 'Ransomware Precursor', volume: 12, impact: 'Critical' },
+      { name: 'API Abuse', volume: 30, impact: 'Medium' },
+      { name: 'Data Exfiltration', volume: 8, impact: 'Critical' }
+    ];
+
     return NextResponse.json({
       success: true,
       data: {
@@ -113,12 +133,14 @@ export async function GET() {
           automationRate: automationRate.toFixed(1),
           mttc: mttcMinutes.toFixed(1), // in minutes
           lossAvoided,
-          recurrenceVelocity
+          recurrenceVelocity,
+          memoryEdges // Intelligence Moat Size
         },
         charts: {
           blastRadiusData,
           assetData,
-          financialExposure
+          financialExposure,
+          threatClusters
         }
       }
     });

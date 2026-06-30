@@ -305,16 +305,53 @@ export default function InvestigationPage() {
           {selectedInvestigation && aiSummary && (
             <>
               {/* AI Summary */}
-              <div className="glass rounded-xl p-6">
+              <div className="glass rounded-xl p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-6 opacity-10">
+                  <Brain size={100} />
+                </div>
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles size={18} className="text-cyan-400" />
                   <h3 className="text-base font-semibold text-slate-100">AI Analysis Summary</h3>
                 </div>
-                <p className="text-sm text-slate-300 leading-relaxed">{aiSummary}</p>
+                <p className="text-sm text-slate-300 leading-relaxed relative z-10">{aiSummary}</p>
                 {attackSummary && (
-                  <div className="mt-4 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg flex items-start gap-3">
+                  <div className="mt-4 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg flex items-start gap-3 relative z-10">
                      <Info size={16} className="text-slate-400 mt-0.5 shrink-0" />
                      <p className="text-xs text-slate-400 leading-relaxed"><span className="font-semibold text-slate-300">Attack Summary: </span>{attackSummary}</p>
+                  </div>
+                )}
+                
+                {/* 5.1 Intelligence Moat */}
+                {selectedInvestigation.rawResult?.escalationScore !== undefined && (
+                  <div className="mt-4 pt-4 border-t border-slate-700/50 relative z-10">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Intelligence Moat (Memory Graph)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                        <div className="text-xs text-slate-400 mb-1">Predictive Escalation Score</div>
+                        <div className="flex items-end gap-2">
+                          <span className={`text-2xl font-bold ${
+                            selectedInvestigation.rawResult.escalationScore > 75 ? 'text-rose-400' :
+                            selectedInvestigation.rawResult.escalationScore > 50 ? 'text-amber-400' : 'text-emerald-400'
+                          }`}>{selectedInvestigation.rawResult.escalationScore}</span>
+                          <span className="text-xs text-slate-500 mb-1">/ 100</span>
+                        </div>
+                      </div>
+                      {selectedInvestigation.rawResult.campaignPattern && (
+                        <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                           <div className="text-xs text-slate-400 mb-1">Detected Campaign</div>
+                           <div className="text-sm font-medium text-indigo-400">{selectedInvestigation.rawResult.campaignPattern}</div>
+                           {selectedInvestigation.rawResult.clusterConfidence && (
+                             <div className="text-[10px] text-slate-500 mt-1">{(selectedInvestigation.rawResult.clusterConfidence * 100).toFixed(0)}% Match Confidence</div>
+                           )}
+                        </div>
+                      )}
+                    </div>
+                    {selectedInvestigation.rawResult.escalationNarrative && (
+                      <div className="mt-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex gap-2">
+                        <Brain size={14} className="text-indigo-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-indigo-200">{selectedInvestigation.rawResult.escalationNarrative}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

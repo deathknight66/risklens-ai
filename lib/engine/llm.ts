@@ -11,7 +11,11 @@ const IncidentAnalysisSchema = z.object({
   timelineEvents: z.array(z.object({ time: z.string(), event: z.string() })).min(0),
   recommendedActions: z.array(z.string()).min(0),
   mitreMappings: z.array(z.string()).min(0),
-  analysisConfidence: z.number().min(0).max(1)
+  analysisConfidence: z.number().min(0).max(1),
+  clusterId: z.string().optional(),
+  clusterConfidence: z.number().min(0).max(1).optional(),
+  campaignPattern: z.string().optional(),
+  escalationNarrative: z.string().optional()
 });
 
 // Scoring logic to prioritize suspicious logs
@@ -34,7 +38,7 @@ function scoreLog(log: any): number {
   return score;
 }
 
-export async function analyzeIncident(incident: any, logs: any[]) {
+export async function analyzeIncident(incident: any, logs: any[], historicalIncidents: any[] = []) {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("Missing OPENAI_API_KEY environment variable. Please set it to use the LLM engine.");
   }
@@ -61,6 +65,9 @@ export async function analyzeIncident(incident: any, logs: any[]) {
   const prompt = `
 Analyze this cybersecurity incident.
 
+Historical Context (Past Related Incidents):
+${JSON.stringify(historicalIncidents)}
+
 Incident:
 ${JSON.stringify(incident)}
 
@@ -81,13 +88,18 @@ Return JSON:
   ],
   "recommendedActions": [],
   "mitreMappings": [],
-  "analysisConfidence": 0.8
+  "analysisConfidence": 0.8,
+  "clusterId": "gen_cluster_uuid",
+  "clusterConfidence": 0.9,
+  "campaignPattern": "Credential Stuffing Chain",
+  "escalationNarrative": "Repeated credential abuse against privileged assets indicates likely coordinated campaign behavior."
 }
 
 CRITICAL RULES:
 1. "rootCauseTree" MUST be 3-6 steps deep representing the lifecycle of the attack.
 2. If the logs indicate benign activity or lack sufficient evidence of an attack, return "Insufficient Evidence" for attackSummary, empty arrays for everything else, and a low analysisConfidence. DO NOT hallucinate attack chains.
 3. Use exact MITRE ATT&CK IDs (e.g., T1110, T1190) in mitreMappings.
+4. If historical incidents are provided and strongly relate, populate clusterId (can be generated), clusterConfidence, campaignPattern, and escalationNarrative.
 `;
 
   const response = await client.chat.completions.create({

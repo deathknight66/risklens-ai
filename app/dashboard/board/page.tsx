@@ -174,7 +174,7 @@ export default function ExecutiveAnalyticsPage() {
         </div>
 
         {/* CHART 3: Top Targeted Assets */}
-        <div className="glass p-6 rounded-xl border border-slate-700/50 lg:col-span-2">
+        <div className="glass p-6 rounded-xl border border-slate-700/50">
           <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-400" /> Top Targeted Infrastructure
           </h2>
@@ -183,7 +183,7 @@ export default function ExecutiveAnalyticsPage() {
               <BarChart data={charts.assetData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
                 <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" stroke="#e2e8f0" fontSize={12} tickLine={false} axisLine={false} width={150} />
+                <YAxis dataKey="name" type="category" stroke="#e2e8f0" fontSize={12} tickLine={false} axisLine={false} width={100} />
                 <Tooltip 
                   cursor={{fill: '#1e293b'}}
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
@@ -191,6 +191,43 @@ export default function ExecutiveAnalyticsPage() {
                 <Bar dataKey="attacks" name="Attack Volume" fill="#38bdf8" radius={[0, 4, 4, 0]} barSize={24} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* CHART 4: Intelligence Moat (Threat Clusters) */}
+        <div className="glass p-6 rounded-xl border border-indigo-500/30 lg:col-span-1 bg-indigo-950/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+            <BrainCircuit size={150} />
+          </div>
+          <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2 relative z-10">
+            <BrainCircuit className="w-5 h-5 text-indigo-400" /> Executive Threat Trends
+          </h2>
+          <p className="text-xs text-indigo-200/60 mb-6 relative z-10">AI-clustered campaigns across the organization.</p>
+          <div className="h-64 relative z-10">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={charts.threatClusters} margin={{ left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} interval={0} angle={-15} textAnchor="end" />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  cursor={{fill: '#1e293b'}}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
+                />
+                <Bar dataKey="volume" name="Incident Volume" fill="#818cf8" radius={[4, 4, 0, 0]} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 pt-4 border-t border-indigo-500/20 flex justify-between items-center relative z-10">
+            <div>
+              <p className="text-xs text-indigo-300">Organizational Memory</p>
+              <p className="text-xl font-bold text-white flex items-baseline gap-1">
+                {kpis.memoryEdges} <span className="text-xs font-normal text-indigo-400">graph edges</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-indigo-300">Fastest Growing</p>
+              <p className="text-sm font-semibold text-rose-400">Credential Abuse</p>
+            </div>
           </div>
         </div>
 
