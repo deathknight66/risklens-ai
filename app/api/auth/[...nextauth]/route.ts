@@ -25,11 +25,16 @@ export const authOptions = {
 
         const isMatch = bcrypt.compareSync(credentials.password, user.password_hash);
         
+        const memberships = db.prepare('SELECT * FROM memberships WHERE user_id = ?').all(user.id) as any[];
+        const activeOrgId = memberships.length > 0 ? memberships[0].organization_id : 'org_default';
+        const role = memberships.length > 0 ? memberships[0].role : 'Unknown';
+
         // Log the authentication attempt
         const ip = req?.headers?.['x-forwarded-for'] || 'unknown';
         const userAgent = req?.headers?.['user-agent'] || 'unknown';
-        db.prepare('INSERT INTO auth_logs (id, user_id, ip, user_agent, login_at, status) VALUES (?, ?, ?, ?, ?, ?)').run(
+        db.prepare('INSERT INTO auth_logs (id, organization_id, user_id, ip, user_agent, login_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
           `log_${crypto.randomBytes(8).toString('hex')}`,
+          activeOrgId,
           user.id,
           ip,
           userAgent,
@@ -38,7 +43,14 @@ export const authOptions = {
         );
 
         if (isMatch) {
-          return { id: user.id, email: user.email, name: user.email, role: user.role };
+          return { 
+            id: user.id, 
+            email: user.email, 
+            name: user.email, 
+            role,
+            activeOrganizationId: activeOrgId,
+            memberships
+          };
         }
         
         return null;
@@ -50,6 +62,8 @@ export const authOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.activeOrganizationId = user.activeOrganizationId;
+        token.memberships = user.memberships;
       }
       return token;
     },
@@ -57,6 +71,8 @@ export const authOptions = {
       if (token) {
         session.user.role = token.role;
         session.user.id = token.id;
+        session.user.activeOrganizationId = token.activeOrganizationId;
+        session.user.memberships = token.memberships;
       }
       return session;
     }
