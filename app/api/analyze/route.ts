@@ -7,6 +7,7 @@ import { PolicyEngine } from '@/lib/engine/policy';
 import crypto from 'crypto';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
+import { recordUsage } from '@/lib/engine/metering';
 
 export async function POST(req: Request) {
   try {
@@ -93,6 +94,9 @@ export async function POST(req: Request) {
     incidentId,
     orgId
   );
+
+    recordUsage(orgId, 'ai_analyses', 1);
+    recordUsage(orgId, 'token_usage', total_tokens);
 
     // Trigger memory storage asynchronously
     storeIncidentMemory(incidentId, orgId, result, logs).catch(err => {

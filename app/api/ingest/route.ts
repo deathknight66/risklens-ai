@@ -5,6 +5,7 @@ import { normalizeEvent } from '@/lib/engine/normalizer';
 import { runDetectionRules } from '@/lib/engine/rules';
 import { groupAlertsIntoIncident } from '@/lib/engine/aggregator';
 import { generateId } from '@/lib/engine/types';
+import { recordUsage } from '@/lib/engine/metering';
 
 export const dynamic = 'force-dynamic';
 
@@ -173,6 +174,8 @@ export async function POST(request: Request) {
         }
       }
     })();
+
+    recordUsage(orgId, 'logs_ingested', normalizedLogs.length);
 
     return NextResponse.json({
       success: true,

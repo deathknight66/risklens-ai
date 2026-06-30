@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { getAdapterForAction } from '@/lib/engine/decision';
 import crypto from 'crypto';
+import { recordUsage } from '@/lib/engine/metering';
 
 export async function executeAction(actionId: string, orgId: string, approvedBy: string): Promise<{ success: boolean; response?: any; error?: string; details?: string }> {
   // 1. Idempotency Lock (Atomic Update)
@@ -62,6 +63,8 @@ export async function executeAction(actionId: string, orgId: string, approvedBy:
       new Date().toISOString(),
       actionId
     );
+
+    recordUsage(orgId, 'action_executions', 1);
 
     return { success: true, response };
   } else {
