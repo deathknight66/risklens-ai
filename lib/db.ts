@@ -646,12 +646,34 @@ db.exec(`
     FOREIGN KEY(organization_id) REFERENCES organizations(id),
     FOREIGN KEY(destination_id) REFERENCES destinations(id)
   );
+
+  CREATE TABLE IF NOT EXISTS benchmark_snapshots (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    industry TEXT NOT NULL,
+    company_size TEXT NOT NULL,
+    avg_mttr_minutes REAL NOT NULL,
+    containment_rate REAL NOT NULL,
+    hours_saved REAL NOT NULL,
+    roi_multiple REAL NOT NULL,
+    playbook_penetration REAL NOT NULL,
+    incident_volume INTEGER NOT NULL,
+    mttr_percentile INTEGER NOT NULL,
+    containment_percentile INTEGER NOT NULL,
+    roi_percentile INTEGER NOT NULL,
+    snapshot_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
 `);
 
 // Upgrade existing tables safely
 try { db.exec("ALTER TABLE organizations ADD COLUMN stripe_customer_id TEXT;"); } catch (e) {}
 try { db.exec("ALTER TABLE organizations ADD COLUMN billing_email TEXT;"); } catch (e) {}
 try { db.exec("ALTER TABLE organizations ADD COLUMN grace_until TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN industry TEXT DEFAULT 'tech';"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN company_size TEXT DEFAULT '1_50';"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN benchmark_opt_out INTEGER DEFAULT 0;"); } catch (e) {}
 
 // Seed Default Organization
 const checkOrgs = db.prepare('SELECT COUNT(*) as count FROM organizations').get() as any;

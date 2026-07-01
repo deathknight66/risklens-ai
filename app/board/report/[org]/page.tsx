@@ -23,7 +23,7 @@ export default function BoardPacket() {
     return <div className="p-12 text-center text-slate-500 font-sans">Generating Board Packet...</div>;
   }
 
-  const { boardMetrics, budgetCycle, company, rcs } = data;
+  const { boardMetrics, budgetCycle, benchmarkSnapshot, company, rcs } = data;
   
   // Mocking Budget Ask Amount
   const budgetAsk = 18000;
@@ -116,6 +116,29 @@ export default function BoardPacket() {
             </div>
           </div>
         </section>
+
+        {benchmarkSnapshot && (
+          <section className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-purple-600" /> Peer Benchmark Comparison
+            </h3>
+            <div className="space-y-4">
+              <p className="text-lg text-slate-700 leading-relaxed font-medium">
+                Faster than <span className="font-bold text-purple-600">{benchmarkSnapshot.mttr_percentile}%</span> of comparable <span className="capitalize">{benchmarkSnapshot.industry}</span> organizations.
+              </p>
+              <div className="pt-4 border-t border-slate-200 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xl font-bold text-slate-900">{benchmarkSnapshot.containment_percentile}th</div>
+                  <div className="text-xs text-slate-500">Containment Percentile</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-slate-900">{benchmarkSnapshot.roi_percentile}th</div>
+                  <div className="text-xs text-slate-500">ROI Percentile</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Budget Ask Section */}
         <section className="bg-blue-900 text-white p-8 rounded-xl print:bg-blue-900 print:text-white" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>

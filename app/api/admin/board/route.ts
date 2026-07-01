@@ -24,6 +24,7 @@ export async function GET() {
       
       let boardMetrics = null;
       let budgetCycle = null;
+      let benchmarkSnapshot = null;
       let execSponsors = [];
       let threadStrength = 0;
       let recommendedActions: any[] = [];
@@ -33,6 +34,9 @@ export async function GET() {
         boardMetrics = db.prepare(`SELECT * FROM board_metrics WHERE organization_id = ? ORDER BY created_at DESC LIMIT 1`).get(orgId) as any;
         budgetCycle = db.prepare(`SELECT * FROM budget_cycles WHERE organization_id = ? ORDER BY created_at DESC LIMIT 1`).get(orgId) as any;
         execSponsors = db.prepare(`SELECT * FROM exec_sponsors WHERE organization_id = ?`).all(orgId) as any[];
+        
+        // Fetch GTM-9 benchmark data
+        benchmarkSnapshot = db.prepare(`SELECT * FROM benchmark_snapshots WHERE organization_id = ? ORDER BY created_at DESC LIMIT 1`).get(orgId) as any;
 
         // RCS Calculation
         if (boardMetrics) {
@@ -134,6 +138,7 @@ export async function GET() {
         threadStrength,
         budgetCycle: budgetCycle || { fiscal_year: 'N/A', renewal_date: 'N/A', procurement_stage: 'Unknown' },
         boardMetrics: boardMetrics || {},
+        benchmarkSnapshot: benchmarkSnapshot || null,
         execSponsors,
         recommendedActions
       };

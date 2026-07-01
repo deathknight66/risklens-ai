@@ -73,7 +73,7 @@ export default function BoardroomDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-700">
+              <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-slate-700">
                 
                 {/* CFO Zone */}
                 <div className="p-6 space-y-4">
@@ -163,6 +163,37 @@ export default function BoardroomDashboard() {
                     </Link>
                   </div>
                 </div>
+
+                {/* Benchmark Zone */}
+                {deal.benchmarkSnapshot && (
+                  <div className="p-6 space-y-4">
+                    <h3 className="font-bold text-slate-200 flex items-center gap-2 mb-4">
+                      <Target className="w-4 h-4 text-purple-400" /> Benchmark Delta
+                    </h3>
+                    <div className="text-xs space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-slate-500 font-semibold border-b border-slate-700 pb-1">
+                        <div>Metric</div>
+                        <div className="text-right">Internal</div>
+                        <div className="text-right">Percentile</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-slate-400">MTTR</div>
+                        <div className="text-right text-slate-300 font-mono">{deal.benchmarkSnapshot.avg_mttr_minutes}m</div>
+                        <div className="text-right text-purple-400 font-bold">{deal.benchmarkSnapshot.mttr_percentile}th</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-slate-400">Contain</div>
+                        <div className="text-right text-slate-300 font-mono">{deal.benchmarkSnapshot.containment_rate}%</div>
+                        <div className="text-right text-purple-400 font-bold">{deal.benchmarkSnapshot.containment_percentile}th</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-slate-400">ROI</div>
+                        <div className="text-right text-slate-300 font-mono">{deal.benchmarkSnapshot.roi_multiple}x</div>
+                        <div className="text-right text-purple-400 font-bold">{deal.benchmarkSnapshot.roi_percentile}th</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>

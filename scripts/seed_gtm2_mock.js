@@ -307,11 +307,16 @@ db.prepare('DELETE FROM design_partner_pipeline').run();
 db.prepare('DELETE FROM pilot_success_metrics').run();
 db.prepare('DELETE FROM sales_objections').run();
 db.prepare('DELETE FROM report_snapshots').run();
+db.prepare('DELETE FROM benchmark_snapshots').run();
 // Don't delete beta_events entirely, just our mock ones if needed, or clear all
 db.prepare("DELETE FROM beta_events WHERE event_type LIKE 'second_%'").run();
 
 const now = new Date();
 const daysAgo = (days) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+
+// Update existing orgs with industry and size
+db.prepare("UPDATE organizations SET industry = 'finance', company_size = '201_500', benchmark_opt_out = 0 WHERE name = 'AlphaSec'").run();
+db.prepare("UPDATE organizations SET industry = 'infra', company_size = '51_200', benchmark_opt_out = 0 WHERE name = 'Beta Infra'").run();
 
 // 1. Pipeline Deals
 const deals = [
@@ -495,6 +500,31 @@ db.prepare(`
   INSERT INTO exec_sponsors (id, organization_id, name, role, department, buying_power, economic_buyer, risk_owner, engagement_score, last_seen_at, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `).run(crypto.randomBytes(8).toString('hex'), org.id, 'Sarah Exec', 'CISO', 'Security', 85, 1, 1, 95, daysAgo(2), now.toISOString());
+
+// GTM-9 Benchmark Data Seed (Global mock peers)
+const insertBenchmark = db.prepare(`
+  INSERT INTO benchmark_snapshots (id, organization_id, industry, company_size, avg_mttr_minutes, containment_rate, hours_saved, roi_multiple, playbook_penetration, incident_volume, mttr_percentile, containment_percentile, roi_percentile, snapshot_hash, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+// AlphaSec's benchmark (Strong performance)
+insertBenchmark.run(crypto.randomBytes(8).toString('hex'), org.id, 'finance', '201_500', 15.0, 92.5, 650.5, 3.4, 85.0, 420, 85, 90, 88, 'hash_alpha123', now.toISOString());
+
+// Beta Infra's benchmark (Weaker performance)
+insertBenchmark.run(crypto.randomBytes(8).toString('hex'), betaOrgId, 'infra', '51_200', 45.0, 45.0, 120.0, 1.2, 30.0, 150, 40, 35, 45, 'hash_beta123', now.toISOString());
+
+// Add 3 random dummy peers to simulate network
+const dummyOrg1 = crypto.randomBytes(8).toString('hex');
+db.prepare("INSERT INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg1, 'Peer Finance 1', 'peer-fin-1', 'finance', '201_500', now.toISOString());
+insertBenchmark.run(crypto.randomBytes(8).toString('hex'), dummyOrg1, 'finance', '201_500', 34.0, 43.0, 200.0, 1.5, 40.0, 300, 50, 50, 50, 'hash_peer1', now.toISOString());
+
+const dummyOrg2 = crypto.randomBytes(8).toString('hex');
+db.prepare("INSERT INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg2, 'Peer Finance 2', 'peer-fin-2', 'finance', '201_500', now.toISOString());
+insertBenchmark.run(crypto.randomBytes(8).toString('hex'), dummyOrg2, 'finance', '201_500', 60.0, 20.0, 50.0, 0.8, 15.0, 250, 20, 15, 25, 'hash_peer2', now.toISOString());
+
+const dummyOrg3 = crypto.randomBytes(8).toString('hex');
+db.prepare("INSERT INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg3, 'Peer Infra 1', 'peer-infra-1', 'infra', '51_200', now.toISOString());
+insertBenchmark.run(crypto.randomBytes(8).toString('hex'), dummyOrg3, 'infra', '51_200', 25.0, 65.0, 300.0, 2.1, 60.0, 180, 75, 70, 80, 'hash_peer3', now.toISOString());
 
 const insertBoardTrigger = db.prepare(`
   INSERT INTO board_triggers (id, trigger_rule, action_recommendation, priority, active, created_at)

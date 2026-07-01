@@ -12,10 +12,11 @@ export default function ChampionKitPage({ params, searchParams }: { params: { or
     return <div className="p-12 text-center text-rose-500 bg-black min-h-screen">Invalid or expired secure link.</div>;
   }
 
-  const organization = db.prepare('SELECT name FROM organizations WHERE id = ?').get(org) as any;
+  const organization = db.prepare('SELECT name, industry, company_size FROM organizations WHERE id = ?').get(org) as any;
   if (!organization) return notFound();
 
   const metrics = db.prepare('SELECT * FROM pilot_success_metrics WHERE organization_id = ? ORDER BY created_at DESC LIMIT 1').get(org) as any;
+  const benchmark = db.prepare('SELECT * FROM benchmark_snapshots WHERE organization_id = ? ORDER BY created_at DESC LIMIT 1').get(org) as any;
 
   if (!metrics) {
     return <div className="p-12 text-center text-slate-400 bg-black min-h-screen">Pilot data not ready yet.</div>;
@@ -79,6 +80,34 @@ export default function ChampionKitPage({ params, searchParams }: { params: { or
             </div>
           </div>
         </section>
+
+        {/* Section: Industry Benchmark Comparison */}
+        {benchmark && (
+          <section className="mb-12">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-purple-400" /> Industry Standard Comparison
+            </h2>
+            <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl">
+              <p className="text-lg text-slate-300 leading-relaxed font-medium mb-6">
+                Teams using autonomous playbooks at your scale resolve incidents <span className="text-purple-400 font-bold">{100 - benchmark.mttr_percentile}% faster</span> than the median <span className="capitalize">{organization.industry}</span> organization.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-6 border-t border-slate-800">
+                <div>
+                  <div className="text-sm text-slate-400 mb-1">MTTR Speed vs Peers</div>
+                  <div className="text-2xl font-bold text-white">{benchmark.mttr_percentile}th <span className="text-sm font-normal text-slate-500">Percentile</span></div>
+                </div>
+                <div>
+                  <div className="text-sm text-slate-400 mb-1">Containment Rate vs Peers</div>
+                  <div className="text-2xl font-bold text-white">{benchmark.containment_percentile}th <span className="text-sm font-normal text-slate-500">Percentile</span></div>
+                </div>
+                <div>
+                  <div className="text-sm text-slate-400 mb-1">ROI vs Peers</div>
+                  <div className="text-2xl font-bold text-white">{benchmark.roi_percentile}th <span className="text-sm font-normal text-slate-500">Percentile</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Section: Security Model Highlights */}
         <section className="mb-12 glass p-8 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
