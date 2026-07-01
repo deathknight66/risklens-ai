@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import OpenAI from 'openai';
 
-const openai = new OpenAI();
+const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy_key_for_build' });
 
 function jaccardSimilarity(setA: Set<string>, setB: Set<string>): number {
   if (setA.size === 0 && setB.size === 0) return 0;
@@ -116,6 +116,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       `;
 
       try {
+        const openai = getOpenAI();
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o',
           messages: [{ role: 'user', content: promptContext }],

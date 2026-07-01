@@ -543,6 +543,20 @@ db.exec(`
     FOREIGN KEY(partner_id) REFERENCES partners(id)
   );
 
+  CREATE TABLE IF NOT EXISTS partner_activity_logs (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    partner_user_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    resource_id TEXT,
+    metadata_json TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(partner_id) REFERENCES partners(id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,

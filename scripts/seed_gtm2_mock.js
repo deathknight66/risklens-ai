@@ -259,6 +259,20 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+  CREATE TABLE IF NOT EXISTS partner_activity_logs (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    partner_user_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    resource_id TEXT,
+    metadata_json TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
@@ -496,6 +510,7 @@ db.prepare('DELETE FROM partner_accounts').run();
 db.prepare('DELETE FROM partner_commissions').run();
 db.prepare('DELETE FROM partner_playbooks').run();
 db.prepare('DELETE FROM partner_users').run();
+db.prepare('DELETE FROM partner_activity_logs').run();
 
 const msspId = crypto.randomBytes(8).toString('hex');
 db.prepare(`
@@ -528,6 +543,7 @@ db.prepare(`
 
 // MSSP User
 const msspUserId = crypto.randomBytes(8).toString('hex');
+db.prepare('DELETE FROM users WHERE email = ?').run('analyst@securitaglobal.com');
 db.prepare(`
   INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)
 `).run(msspUserId, 'analyst@securitaglobal.com', 'hash', 'partner', now.toISOString());
@@ -536,5 +552,11 @@ db.prepare(`
   INSERT INTO partner_users (id, user_id, partner_id, role, created_at)
   VALUES (?, ?, ?, ?, ?)
 `).run(crypto.randomBytes(8).toString('hex'), msspUserId, msspId, 'partner_admin', now.toISOString());
+
+// MSSP Activity Log
+db.prepare(`
+  INSERT INTO partner_activity_logs (id, partner_id, partner_user_id, organization_id, action_type, resource_type, resource_id, metadata_json, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), msspId, msspUserId, org.id, 'playbook_propagated', 'playbook', 'pb-123', JSON.stringify({ playbook_name: 'Credential Stuffing Lockdown v2', target_org: 'AlphaSec' }), now.toISOString());
 
 console.log('Seeding complete.');
