@@ -193,6 +193,72 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+  CREATE TABLE IF NOT EXISTS partners (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    tier TEXT NOT NULL,
+    rev_share_percent REAL NOT NULL,
+    slug TEXT UNIQUE,
+    status TEXT DEFAULT 'active',
+    billing_model TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS partner_accounts (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    relationship_type TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    contract_start TEXT,
+    contract_end TEXT,
+    primary_operator_user_id TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS partner_commissions (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    invoice_id TEXT,
+    commission_amount REAL NOT NULL,
+    paid_at TEXT,
+    status TEXT DEFAULT 'pending',
+    snapshot_hash TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS partner_playbooks (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    playbook_json TEXT NOT NULL,
+    visibility TEXT DEFAULT 'private',
+    version INTEGER DEFAULT 1,
+    adoption_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS partner_users (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    partner_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(user_id, partner_id)
+  )
+`).run();
+
+db.prepare(`
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
@@ -423,5 +489,52 @@ const insertBoardTrigger = db.prepare(`
 insertBoardTrigger.run(crypto.randomBytes(8).toString('hex'), 'escalate_procurement', 'Escalate to VP Procurement', 1, 1, now.toISOString());
 insertBoardTrigger.run(crypto.randomBytes(8).toString('hex'), 'generate_board_packet', 'Generate & Send Board Packet', 2, 1, now.toISOString());
 insertBoardTrigger.run(crypto.randomBytes(8).toString('hex'), 'schedule_exec_alignment', 'Schedule Exec Alignment', 3, 1, now.toISOString());
+
+// 9. GTM-8 Channel Engine Data
+db.prepare('DELETE FROM partners').run();
+db.prepare('DELETE FROM partner_accounts').run();
+db.prepare('DELETE FROM partner_commissions').run();
+db.prepare('DELETE FROM partner_playbooks').run();
+db.prepare('DELETE FROM partner_users').run();
+
+const msspId = crypto.randomBytes(8).toString('hex');
+db.prepare(`
+  INSERT INTO partners (id, name, type, tier, rev_share_percent, slug, status, billing_model, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(msspId, 'Securita Global MSSP', 'mssp', 'platinum', 20.0, 'securita-global', 'active', 'rev_share', now.toISOString());
+
+// Map MSSP to AlphaSec and Beta Infra
+db.prepare(`
+  INSERT INTO partner_accounts (id, partner_id, organization_id, relationship_type, status, contract_start, contract_end, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), msspId, org.id, 'managed_service', 'active', daysAgo(100), '2027-01-01', now.toISOString());
+
+db.prepare(`
+  INSERT INTO partner_accounts (id, partner_id, organization_id, relationship_type, status, contract_start, contract_end, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), msspId, betaOrgId, 'managed_service', 'active', daysAgo(50), '2027-06-01', now.toISOString());
+
+// MSSP Commission for AlphaSec
+db.prepare(`
+  INSERT INTO partner_commissions (id, partner_id, organization_id, invoice_id, commission_amount, paid_at, status, snapshot_hash, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), msspId, org.id, 'INV-2026-06', 1500.00, null, 'pending', 'hash_abc123', now.toISOString());
+
+// MSSP Playbook
+db.prepare(`
+  INSERT INTO partner_playbooks (id, partner_id, name, playbook_json, visibility, version, adoption_count, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), msspId, 'Credential Stuffing Lockdown v2', '{"steps":["isolate","notify"]}', 'portfolio', 2, 2, now.toISOString());
+
+// MSSP User
+const msspUserId = crypto.randomBytes(8).toString('hex');
+db.prepare(`
+  INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)
+`).run(msspUserId, 'analyst@securitaglobal.com', 'hash', 'partner', now.toISOString());
+
+db.prepare(`
+  INSERT INTO partner_users (id, user_id, partner_id, role, created_at)
+  VALUES (?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), msspUserId, msspId, 'partner_admin', now.toISOString());
 
 console.log('Seeding complete.');

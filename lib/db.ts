@@ -480,6 +480,69 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS partners (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- mssp | reseller | vciso
+    tier TEXT NOT NULL, -- silver | gold | platinum
+    rev_share_percent REAL NOT NULL,
+    slug TEXT UNIQUE,
+    status TEXT DEFAULT 'active',
+    billing_model TEXT, -- rev_share | wholesale | referral
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS partner_accounts (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    relationship_type TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    contract_start TEXT,
+    contract_end TEXT,
+    primary_operator_user_id TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(partner_id) REFERENCES partners(id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS partner_commissions (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    invoice_id TEXT,
+    commission_amount REAL NOT NULL,
+    paid_at TEXT,
+    status TEXT DEFAULT 'pending', -- pending | paid | disputed
+    snapshot_hash TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(partner_id) REFERENCES partners(id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS partner_playbooks (
+    id TEXT PRIMARY KEY,
+    partner_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    playbook_json TEXT NOT NULL,
+    visibility TEXT DEFAULT 'private',
+    version INTEGER DEFAULT 1,
+    adoption_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(partner_id) REFERENCES partners(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS partner_users (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    partner_id TEXT NOT NULL,
+    role TEXT NOT NULL, -- partner_admin | partner_operator | partner_analyst
+    created_at TEXT NOT NULL,
+    UNIQUE(user_id, partner_id),
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(partner_id) REFERENCES partners(id)
+  );
+
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
