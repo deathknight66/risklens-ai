@@ -60,6 +60,12 @@ export default function PartnerProofVault() {
           </div>
         </section>
 
+        {/* DEPLOYMENT SPEED */}
+        <section className="max-w-4xl mx-auto text-center p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+          <h2 className="text-2xl font-bold text-emerald-400">Average deployment time: 14 Days</h2>
+          <p className="text-slate-400 mt-2">Zero complex integrations. Standardized infrastructure deployed directly through the marketplace.</p>
+        </section>
+
         {/* CASE STUDIES */}
         <section className="space-y-12">
           <h2 className="text-3xl font-bold text-white text-center">Anonymized Deployments</h2>
