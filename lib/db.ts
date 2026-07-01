@@ -423,6 +423,63 @@ db.exec(`
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
 
+  CREATE TABLE IF NOT EXISTS board_metrics (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    reporting_period TEXT NOT NULL,
+    mttr_before INTEGER,
+    mttr_after INTEGER,
+    incidents_contained INTEGER,
+    analyst_hours_saved REAL,
+    estimated_loss_prevented REAL,
+    insurance_premium_delta REAL,
+    compliance_hours_saved REAL,
+    confidence_score INTEGER DEFAULT 80,
+    methodology_version TEXT DEFAULT 'v1',
+    snapshot_hash TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS budget_cycles (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    fiscal_year TEXT,
+    renewal_date TEXT,
+    board_meeting_date TEXT,
+    security_budget_status TEXT,
+    budget_owner TEXT,
+    procurement_stage TEXT,
+    priority_score INTEGER,
+    budget_locked INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS exec_sponsors (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    department TEXT,
+    buying_power INTEGER DEFAULT 0,
+    economic_buyer INTEGER DEFAULT 0,
+    risk_owner INTEGER DEFAULT 0,
+    engagement_score INTEGER DEFAULT 0,
+    last_seen_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS board_triggers (
+    id TEXT PRIMARY KEY,
+    trigger_rule TEXT NOT NULL,
+    action_recommendation TEXT NOT NULL,
+    priority INTEGER NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,

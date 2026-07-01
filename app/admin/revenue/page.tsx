@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, Activity, AlertTriangle, ShieldCheck, Clock, Users } from "lucide-react";
+import { TrendingUp, Activity, AlertTriangle, ShieldCheck, Clock, Users, Briefcase } from "lucide-react";
 import Link from 'next/link';
 
 export default function RevenueDashboard() {
@@ -45,9 +45,12 @@ export default function RevenueDashboard() {
             GTM-2 Close Engine
           </h1>
           <p className="text-slate-400 mt-2">Pipeline Velocity, Objection Intelligence, and Pilot Health.</p>
-          <div className="mt-4">
+          <div className="mt-4 flex gap-4">
             <Link href="/admin/revenue/expansion" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500/20 transition-colors text-sm font-semibold">
               <Activity className="w-4 h-4" /> Go to Expansion & Retention Engine
+            </Link>
+            <Link href="/admin/revenue/board" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-500/20 transition-colors text-sm font-semibold">
+              <Briefcase className="w-4 h-4" /> Go to Boardroom Engine
             </Link>
           </div>
         </header>

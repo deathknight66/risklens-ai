@@ -131,6 +131,68 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+  CREATE TABLE IF NOT EXISTS board_metrics (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    reporting_period TEXT NOT NULL,
+    mttr_before INTEGER,
+    mttr_after INTEGER,
+    incidents_contained INTEGER,
+    analyst_hours_saved REAL,
+    estimated_loss_prevented REAL,
+    insurance_premium_delta REAL,
+    compliance_hours_saved REAL,
+    confidence_score INTEGER DEFAULT 80,
+    methodology_version TEXT DEFAULT 'v1',
+    snapshot_hash TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS budget_cycles (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    fiscal_year TEXT,
+    renewal_date TEXT,
+    board_meeting_date TEXT,
+    security_budget_status TEXT,
+    budget_owner TEXT,
+    procurement_stage TEXT,
+    priority_score INTEGER,
+    budget_locked INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS exec_sponsors (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    department TEXT,
+    buying_power INTEGER DEFAULT 0,
+    economic_buyer INTEGER DEFAULT 0,
+    risk_owner INTEGER DEFAULT 0,
+    engagement_score INTEGER DEFAULT 0,
+    last_seen_at TEXT,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS board_triggers (
+    id TEXT PRIMARY KEY,
+    trigger_rule TEXT NOT NULL,
+    action_recommendation TEXT NOT NULL,
+    priority INTEGER NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
   CREATE TABLE IF NOT EXISTS pilot_success_metrics (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
@@ -326,5 +388,40 @@ insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'high_churn_score',
 insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'low_thread_strength', 35, 'champion_diversification', 'Trigger champion diversification playbook.', now.toISOString());
 insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'political_drift', 60, 'exec_alignment_refresh', 'Trigger executive alignment refresh.', now.toISOString());
 insertRetPlaybook.run(crypto.randomBytes(8).toString('hex'), 'automation_decay', 40, 'roi_refresh', 'Auto-send executive ROI refresh.', now.toISOString());
+
+// 8. GTM-7 Boardroom Engine Data
+db.prepare('DELETE FROM board_metrics').run();
+db.prepare('DELETE FROM budget_cycles').run();
+db.prepare('DELETE FROM exec_sponsors').run();
+db.prepare('DELETE FROM board_triggers').run();
+
+// AlphaSec Board Data (Strong ROI, Budget Cycle approaching)
+db.prepare(`
+  INSERT INTO board_metrics (id, organization_id, reporting_period, mttr_before, mttr_after, incidents_contained, analyst_hours_saved, estimated_loss_prevented, insurance_premium_delta, compliance_hours_saved, confidence_score, snapshot_hash, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), org.id, 'Q3 2026', 120, 15, 42, 650.5, 147000, 15000, 45, 92, 'hash_abc123', now.toISOString());
+
+const nextMonth = new Date();
+nextMonth.setMonth(nextMonth.getMonth() + 1);
+const nextYear = new Date();
+nextYear.setFullYear(nextYear.getFullYear() + 1);
+
+db.prepare(`
+  INSERT INTO budget_cycles (id, organization_id, fiscal_year, renewal_date, board_meeting_date, security_budget_status, budget_owner, procurement_stage, priority_score, budget_locked, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), org.id, 'FY27', nextMonth.toISOString(), daysAgo(-15), 'approved', 'CFO', 'legal_review', 90, 0, now.toISOString());
+
+db.prepare(`
+  INSERT INTO exec_sponsors (id, organization_id, name, role, department, buying_power, economic_buyer, risk_owner, engagement_score, last_seen_at, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), org.id, 'Sarah Exec', 'CISO', 'Security', 85, 1, 1, 95, daysAgo(2), now.toISOString());
+
+const insertBoardTrigger = db.prepare(`
+  INSERT INTO board_triggers (id, trigger_rule, action_recommendation, priority, active, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+insertBoardTrigger.run(crypto.randomBytes(8).toString('hex'), 'escalate_procurement', 'Escalate to VP Procurement', 1, 1, now.toISOString());
+insertBoardTrigger.run(crypto.randomBytes(8).toString('hex'), 'generate_board_packet', 'Generate & Send Board Packet', 2, 1, now.toISOString());
+insertBoardTrigger.run(crypto.randomBytes(8).toString('hex'), 'schedule_exec_alignment', 'Schedule Exec Alignment', 3, 1, now.toISOString());
 
 console.log('Seeding complete.');
