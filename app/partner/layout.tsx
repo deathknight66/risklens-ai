@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Network, Building2, BookOpen, CircleDollarSign, LogOut, Target, Store } from "lucide-react";
+import { Network, Building2, BookOpen, CircleDollarSign, LogOut, Target, Store, Calculator } from "lucide-react";
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,6 +13,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
     { href: "/partner/playbooks", label: "Playbooks", icon: BookOpen },
     { href: "/partner/benchmarks", label: "Benchmarks", icon: Target },
     { href: "/partner/marketplace", label: "Marketplace", icon: Store },
+    { href: "/partner/roi", label: "ROI Calculator", icon: Calculator },
     { href: "/partner/commissions", label: "Commissions", icon: CircleDollarSign },
   ];
 
