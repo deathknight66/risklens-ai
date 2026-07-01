@@ -718,9 +718,20 @@ db.exec(`
     rating INTEGER NOT NULL,
     review_text TEXT,
     verified_install INTEGER DEFAULT 1,
+    organization_segment TEXT,
+    incident_volume_band TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY(asset_id) REFERENCES marketplace_assets(id),
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS partner_reputation_cache (
+    partner_id TEXT PRIMARY KEY,
+    avg_asset_rating REAL DEFAULT 0,
+    benchmark_win_rate REAL DEFAULT 0,
+    install_volume INTEGER DEFAULT 0,
+    last_updated_at TEXT NOT NULL,
+    FOREIGN KEY(partner_id) REFERENCES partners(id)
   );
 `);
 
@@ -731,6 +742,9 @@ try { db.exec("ALTER TABLE organizations ADD COLUMN grace_until TEXT;"); } catch
 try { db.exec("ALTER TABLE organizations ADD COLUMN industry TEXT DEFAULT 'tech';"); } catch (e) {}
 try { db.exec("ALTER TABLE organizations ADD COLUMN company_size TEXT DEFAULT '1_50';"); } catch (e) {}
 try { db.exec("ALTER TABLE organizations ADD COLUMN benchmark_opt_out INTEGER DEFAULT 0;"); } catch (e) {}
+
+try { db.exec("ALTER TABLE marketplace_reviews ADD COLUMN organization_segment TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE marketplace_reviews ADD COLUMN incident_volume_band TEXT;"); } catch (e) {}
 
 // Seed Default Organization
 const checkOrgs = db.prepare('SELECT COUNT(*) as count FROM organizations').get() as any;

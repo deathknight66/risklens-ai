@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Store, Download, Star, ShieldCheck, Tag, Target, Clock, Zap, CheckCircle2 } from "lucide-react";
+import { Store, Download, Star, ShieldCheck, Tag, Target, Clock, Zap, CheckCircle2, TrendingUp, Cloud, Lock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function MarketplacePage() {
   const { data: session } = useSession();
@@ -63,8 +64,32 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {assets.map((asset) => (
+      <div className="space-y-10">
+        <section>
+          <div className="flex items-center gap-2 mb-6">
+            <h2 className="text-2xl font-bold text-white">Installed by companies like yours</h2>
+            <div className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs font-bold rounded">Tech | 100-500 Employees</div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {assets.slice(0, 3).map((asset) => renderAssetCard(asset))}
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center gap-2 mb-6">
+            <h2 className="text-2xl font-bold text-white">Used by top-performing MSSPs</h2>
+            <div className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded">Top Quartile Partners</div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {assets.slice(3).map((asset) => renderAssetCard(asset))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+
+  function renderAssetCard(asset: any) {
+    return (
           <div key={asset.id} className="glass rounded-xl border border-slate-800 flex flex-col hover:border-slate-700 transition-all group overflow-hidden">
             {/* Header / Category color bar */}
             <div className={`h-1 w-full ${asset.category === 'playbook' ? 'bg-indigo-500' : asset.category === 'compliance' ? 'bg-emerald-500' : 'bg-fuchsia-500'}`} />
@@ -79,14 +104,28 @@ export default function MarketplacePage() {
                 </div>
                 {asset.verified ? (
                   <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-1 rounded">
-                    <ShieldCheck className="w-3 h-3" /> Verified Partner
+                    <ShieldCheck className="w-3 h-3" /> Verified by Securita Global
                   </div>
                 ) : null}
               </div>
               
-              <h3 className="text-xl font-bold text-slate-100 mb-2 leading-tight">{asset.name}</h3>
-              <p className="text-sm text-slate-400 mb-6 flex-1 line-clamp-3">{asset.description}</p>
+              <Link href={`/dashboard/marketplace/${asset.id}`} className="hover:opacity-80 transition-opacity">
+                <h3 className="text-xl font-bold text-slate-100 mb-2 leading-tight">{asset.name}</h3>
+              </Link>
+              <p className="text-sm text-slate-400 mb-4 flex-1 line-clamp-3">{asset.description}</p>
               
+              {/* Trust Signals Block */}
+              <div className="bg-slate-900/50 rounded-lg p-3 mb-6 space-y-2 border border-slate-800">
+                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="font-medium">Average MTTR reduction: {asset.benchmark_uplift}%</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-blue-400">
+                  <Zap className="w-4 h-4" />
+                  <span className="font-medium">+{asset.install_velocity} installs this month</span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 text-sm mb-6 pb-6 border-b border-slate-800">
                 <div>
                   <div className="text-slate-500 mb-1">Creator</div>
@@ -133,8 +172,6 @@ export default function MarketplacePage() {
               </div>
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  }
 }

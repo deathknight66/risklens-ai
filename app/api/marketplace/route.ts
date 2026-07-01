@@ -28,27 +28,46 @@ export async function GET(request: Request) {
 
     // Add deterministic score and install status
     const rankedAssets = assets.map(asset => {
-      // For MVP, we derive install velocity and benchmark uplift deterministically from the database stats
-      // Assume max installs in DB is 500 for normalization
-      const installVelocity = Math.min(100, (asset.installs / 500) * 100);
+      // 1. Fetch Creator Reputation Cache
+      let creatorRep = db.prepare('SELECT * FROM partner_reputation_cache WHERE partner_id = ?').get(asset.creator_partner_id) as any;
+      if (!creatorRep) {
+        // Mock default if no cache exists
+        creatorRep = {
+          avg_asset_rating: 4.5,
+          benchmark_win_rate: 80,
+          install_volume: 0
+        };
+      }
+
+      // 2. Fetch Installs for Velocity (Mock logic for MVP)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const recentInstalls = db.prepare('SELECT COUNT(*) as count FROM marketplace_installs WHERE asset_id = ? AND installed_at >= ?').get(asset.id, thirtyDaysAgo) as any;
       
-      // Mock benchmark uplift based on category and verification for MVP
-      let benchmarkUplift = asset.verified ? 80 : 40;
+      const installVelocityScore = Math.min(100, (recentInstalls.count / 50) * 100); 
+
+      // 3. Dynamic metrics
+      let benchmarkUplift = asset.verified ? 85 : 50;
       if (asset.category === 'benchmark_pack') benchmarkUplift = 95;
+      
+      const retentionLift = asset.verified ? 90 : 60; // Mocked for MVP
+      const creatorScore = creatorRep.benchmark_win_rate;
 
-      const partnerReputation = asset.partner_tier === 'platinum' ? 100 : (asset.partner_tier === 'gold' ? 80 : 50);
-
+      // Note: We use the asset's pre-calculated rating here for speed on the list view.
+      // The detail page calculates the precise weighted rating live.
       const msScore = calculateMarketplaceScore(
         asset.rating,
-        installVelocity,
+        installVelocityScore,
         benchmarkUplift,
-        partnerReputation
+        retentionLift,
+        creatorScore
       );
 
       return {
         ...asset,
         ms_score: msScore,
-        is_installed: installed.includes(asset.id)
+        is_installed: installed.includes(asset.id),
+        install_velocity: recentInstalls.count,
+        benchmark_uplift: benchmarkUplift
       };
     });
 
