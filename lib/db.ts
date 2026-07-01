@@ -665,6 +665,63 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY(organization_id) REFERENCES organizations(id)
   );
+
+  CREATE TABLE IF NOT EXISTS marketplace_assets (
+    id TEXT PRIMARY KEY,
+    creator_partner_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    category TEXT NOT NULL, -- playbook | compliance | benchmark_pack
+    name TEXT NOT NULL,
+    description TEXT,
+    asset_json TEXT NOT NULL,
+    price REAL NOT NULL,
+    status TEXT DEFAULT 'draft', -- draft | published | deprecated
+    visibility TEXT DEFAULT 'public',
+    version TEXT DEFAULT '1.0',
+    verified INTEGER DEFAULT 0,
+    installs INTEGER DEFAULT 0,
+    rating REAL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(creator_partner_id) REFERENCES partners(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS marketplace_installs (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    installed_by TEXT NOT NULL,
+    install_mode TEXT DEFAULT 'simulated', -- simulated | active
+    license_type TEXT DEFAULT 'one_time', -- one_time | subscription
+    success_state TEXT,
+    installed_at TEXT NOT NULL,
+    FOREIGN KEY(asset_id) REFERENCES marketplace_assets(id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS marketplace_payouts (
+    id TEXT PRIMARY KEY,
+    creator_partner_id TEXT NOT NULL,
+    asset_id TEXT NOT NULL,
+    invoice_id TEXT,
+    amount REAL NOT NULL,
+    paid_at TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(creator_partner_id) REFERENCES partners(id),
+    FOREIGN KEY(asset_id) REFERENCES marketplace_assets(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS marketplace_reviews (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    rating INTEGER NOT NULL,
+    review_text TEXT,
+    verified_install INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(asset_id) REFERENCES marketplace_assets(id),
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
 `);
 
 // Upgrade existing tables safely

@@ -308,6 +308,10 @@ db.prepare('DELETE FROM pilot_success_metrics').run();
 db.prepare('DELETE FROM sales_objections').run();
 db.prepare('DELETE FROM report_snapshots').run();
 db.prepare('DELETE FROM benchmark_snapshots').run();
+db.prepare('DELETE FROM marketplace_installs').run();
+db.prepare('DELETE FROM marketplace_reviews').run();
+db.prepare('DELETE FROM marketplace_payouts').run();
+db.prepare('DELETE FROM marketplace_assets').run();
 // Don't delete beta_events entirely, just our mock ones if needed, or clear all
 db.prepare("DELETE FROM beta_events WHERE event_type LIKE 'second_%'").run();
 
@@ -515,15 +519,15 @@ insertBenchmark.run(crypto.randomBytes(8).toString('hex'), betaOrgId, 'infra', '
 
 // Add 3 random dummy peers to simulate network
 const dummyOrg1 = crypto.randomBytes(8).toString('hex');
-db.prepare("INSERT INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg1, 'Peer Finance 1', 'peer-fin-1', 'finance', '201_500', now.toISOString());
+db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg1, 'Peer Finance 1', 'peer-fin-1-' + dummyOrg1, 'finance', '201_500', now.toISOString());
 insertBenchmark.run(crypto.randomBytes(8).toString('hex'), dummyOrg1, 'finance', '201_500', 34.0, 43.0, 200.0, 1.5, 40.0, 300, 50, 50, 50, 'hash_peer1', now.toISOString());
 
 const dummyOrg2 = crypto.randomBytes(8).toString('hex');
-db.prepare("INSERT INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg2, 'Peer Finance 2', 'peer-fin-2', 'finance', '201_500', now.toISOString());
+db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg2, 'Peer Finance 2', 'peer-fin-2-' + dummyOrg2, 'finance', '201_500', now.toISOString());
 insertBenchmark.run(crypto.randomBytes(8).toString('hex'), dummyOrg2, 'finance', '201_500', 60.0, 20.0, 50.0, 0.8, 15.0, 250, 20, 15, 25, 'hash_peer2', now.toISOString());
 
 const dummyOrg3 = crypto.randomBytes(8).toString('hex');
-db.prepare("INSERT INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg3, 'Peer Infra 1', 'peer-infra-1', 'infra', '51_200', now.toISOString());
+db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, industry, company_size, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(dummyOrg3, 'Peer Infra 1', 'peer-infra-1-' + dummyOrg3, 'infra', '51_200', now.toISOString());
 insertBenchmark.run(crypto.randomBytes(8).toString('hex'), dummyOrg3, 'infra', '51_200', 25.0, 65.0, 300.0, 2.1, 60.0, 180, 75, 70, 80, 'hash_peer3', now.toISOString());
 
 const insertBoardTrigger = db.prepare(`
@@ -588,5 +592,35 @@ db.prepare(`
   INSERT INTO partner_activity_logs (id, partner_id, partner_user_id, organization_id, action_type, resource_type, resource_id, metadata_json, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `).run(crypto.randomBytes(8).toString('hex'), msspId, msspUserId, org.id, 'playbook_propagated', 'playbook', 'pb-123', JSON.stringify({ playbook_name: 'Credential Stuffing Lockdown v2', target_org: 'AlphaSec' }), now.toISOString());
+
+// GTM-10 Marketplace Seed
+const mktAsset1 = crypto.randomBytes(8).toString('hex');
+const mktAsset2 = crypto.randomBytes(8).toString('hex');
+const mktAsset3 = crypto.randomBytes(8).toString('hex');
+
+db.prepare(`
+  INSERT INTO marketplace_assets (id, creator_partner_id, type, category, name, description, asset_json, price, status, visibility, version, verified, installs, rating, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(mktAsset1, msspId, 'pack', 'playbook', 'Credential Stuffing Lockdown v3', 'Automatically intercepts and contains large-scale credential stuffing attacks using advanced rate limiting and IP clustering.', '{}', 499.00, 'published', 'public', '3.1', 1, 142, 4.8, daysAgo(30));
+
+db.prepare(`
+  INSERT INTO marketplace_assets (id, creator_partner_id, type, category, name, description, asset_json, price, status, visibility, version, verified, installs, rating, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(mktAsset2, msspId, 'pack', 'compliance', 'SOC2 Detection Pack', 'Maps incoming logs to SOC2 trust service criteria and automatically flags compliance violations.', '{}', 999.00, 'published', 'public', '1.0', 1, 85, 4.9, daysAgo(45));
+
+db.prepare(`
+  INSERT INTO marketplace_assets (id, creator_partner_id, type, category, name, description, asset_json, price, status, visibility, version, verified, installs, rating, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run(mktAsset3, msspId, 'pack', 'benchmark_pack', 'Finance MTTR Optimization Pack', 'Built from top percentile behaviors. Contains 5 playbooks proven to reduce MTTR by 30% for financial institutions.', '{}', 1499.00, 'published', 'public', '2.0', 1, 34, 5.0, daysAgo(10));
+
+db.prepare(`
+  INSERT INTO marketplace_installs (id, asset_id, organization_id, installed_by, install_mode, license_type, success_state, installed_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), mktAsset1, org.id, 'usr_admin', 'simulated', 'one_time', 'success', daysAgo(15));
+
+db.prepare(`
+  INSERT INTO marketplace_reviews (id, asset_id, organization_id, rating, review_text, verified_install, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`).run(crypto.randomBytes(8).toString('hex'), mktAsset1, org.id, 5, 'Completely stopped our credential stuffing problem within hours of installation.', 1, daysAgo(12));
 
 console.log('Seeding complete.');
