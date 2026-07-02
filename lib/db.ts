@@ -17,6 +17,15 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS organizations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    domain TEXT,
+    tier TEXT NOT NULL DEFAULT 'free',
+    industry TEXT,
+    company_size TEXT DEFAULT '1_50',
+    benchmark_opt_out INTEGER DEFAULT 0,
+    onboarding_step TEXT,
+    time_to_first_containment_minutes REAL,
+    first_ace_achieved_at TEXT,
+    activation_intent TEXT,
     slug TEXT UNIQUE NOT NULL,
     plan TEXT NOT NULL DEFAULT 'free',
     status TEXT NOT NULL DEFAULT 'active',
@@ -742,6 +751,10 @@ try { db.exec("ALTER TABLE organizations ADD COLUMN grace_until TEXT;"); } catch
 try { db.exec("ALTER TABLE organizations ADD COLUMN industry TEXT DEFAULT 'tech';"); } catch (e) {}
 try { db.exec("ALTER TABLE organizations ADD COLUMN company_size TEXT DEFAULT '1_50';"); } catch (e) {}
 try { db.exec("ALTER TABLE organizations ADD COLUMN benchmark_opt_out INTEGER DEFAULT 0;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN onboarding_step TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN time_to_first_containment_minutes REAL;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN first_ace_achieved_at TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE organizations ADD COLUMN activation_intent TEXT;"); } catch (e) {}
 
 try { db.exec("ALTER TABLE marketplace_reviews ADD COLUMN organization_segment TEXT;"); } catch (e) {}
 try { db.exec("ALTER TABLE marketplace_reviews ADD COLUMN incident_volume_band TEXT;"); } catch (e) {}
