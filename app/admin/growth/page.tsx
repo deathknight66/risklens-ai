@@ -28,7 +28,7 @@ export default function GrowthCommandCenter() {
     );
   }
 
-  const { funnel, partnerLiquidity, assetMatrix, expansionCandidates, churnRisks } = data;
+  const { funnel, partnerLiquidity, assetMatrix, expansionCandidates, churnRisks, integrityBoard } = data;
 
   return (
     <div className="min-h-screen bg-[#191a1f] text-slate-200 font-sans p-6 md:p-10 pb-20 selection:bg-indigo-500/30">
@@ -239,6 +239,40 @@ export default function GrowthCommandCenter() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* MODULE F: TELEMETRY INTEGRITY BOARD (GTM-13) */}
+        {/* ========================================================= */}
+        <section className="lg:col-span-3 bg-[#202127] rounded-[28px] p-8 border border-fuchsia-900/30 shadow-[0_4px_24px_rgba(217,70,239,0.05)] mt-4">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-fuchsia-400" /> Telemetry Integrity Board
+            </h2>
+            <div className={`text-xs font-medium px-3 py-1 rounded-full border ${integrityBoard.benchmarkPurityRatio > 85 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : integrityBoard.benchmarkPurityRatio > 65 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+              North Star BPR: {integrityBoard.benchmarkPurityRatio}%
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-[#1e1f25] border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
+              <div className="text-slate-500 text-xs font-bold uppercase mb-2 relative z-10">Benchmark Purity Ratio</div>
+              <div className="text-3xl font-black text-fuchsia-400 font-mono relative z-10">{integrityBoard.benchmarkPurityRatio}%</div>
+            </div>
+            <div className="bg-[#1e1f25] border border-slate-800 rounded-2xl p-5">
+              <div className="text-slate-500 text-xs font-bold uppercase mb-2">Verified Event Ratio</div>
+              <div className="text-2xl font-bold text-emerald-400">{integrityBoard.verifiedEventRatio}%</div>
+            </div>
+            <div className="bg-[#1e1f25] border border-slate-800 rounded-2xl p-5">
+              <div className="text-slate-500 text-xs font-bold uppercase mb-2">Duplicate Event Rate</div>
+              <div className="text-2xl font-bold text-amber-400">{integrityBoard.duplicateEventRate}%</div>
+            </div>
+            <div className="bg-[#1e1f25] border border-slate-800 rounded-2xl p-5">
+              <div className="text-slate-500 text-xs font-bold uppercase mb-2">Sim Contamination</div>
+              <div className="text-2xl font-bold text-rose-400">{integrityBoard.simulationContamination}%</div>
+            </div>
           </div>
         </section>
 

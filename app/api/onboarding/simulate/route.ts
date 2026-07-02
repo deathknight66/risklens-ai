@@ -44,6 +44,19 @@ export async function POST(request: Request) {
 
     if (orgId) {
        db.prepare('UPDATE organizations SET onboarding_step = ? WHERE id = ?').run('simulation', orgId);
+
+       // Explicitly inject simulated event into telemetry_events and ace_events
+       const telemetryId = `evt_sim_${Date.now()}`;
+       db.prepare(`
+         INSERT INTO telemetry_events (id, organization_id, source_type, event_hash, ingested_at, processed_at, integrity_score, simulation_flag)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       `).run(telemetryId, orgId, 'simulation', `hash_${telemetryId}`, new Date().toISOString(), new Date().toISOString(), 0, 1);
+
+       const aceEventId = `ace_sim_${Date.now()}`;
+       db.prepare(`
+         INSERT INTO ace_events (id, organization_id, playbook_id, telemetry_event_id, started_at, contained_at, rollback_used, post_action_verification, mttr_seconds, verified)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       `).run(aceEventId, orgId, playbookId, telemetryId, new Date().toISOString(), new Date().toISOString(), 0, 0, playbook?.verified ? 65 * 60 : 30 * 60, 0);
     }
 
     // Wait a brief moment to simulate processing

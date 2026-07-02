@@ -600,6 +600,37 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS telemetry_events (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    connector_id TEXT,
+    source_type TEXT NOT NULL,
+    event_hash TEXT NOT NULL,
+    raw_payload TEXT,
+    normalized_payload TEXT,
+    ingested_at TEXT NOT NULL,
+    processed_at TEXT,
+    integrity_score REAL DEFAULT 0,
+    duplicate_of TEXT,
+    simulation_flag INTEGER DEFAULT 0,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS ace_events (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    playbook_id TEXT NOT NULL,
+    telemetry_event_id TEXT,
+    started_at TEXT NOT NULL,
+    contained_at TEXT,
+    rollback_used INTEGER DEFAULT 0,
+    post_action_verification INTEGER DEFAULT 0,
+    mttr_seconds REAL,
+    verified INTEGER DEFAULT 0,
+    FOREIGN KEY(organization_id) REFERENCES organizations(id),
+    FOREIGN KEY(telemetry_event_id) REFERENCES telemetry_events(id)
+  );
+
   CREATE TABLE IF NOT EXISTS auth_logs (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
@@ -757,7 +788,7 @@ try { db.exec("ALTER TABLE organizations ADD COLUMN first_ace_achieved_at TEXT;"
 try { db.exec("ALTER TABLE organizations ADD COLUMN activation_intent TEXT;"); } catch (e) {}
 
 try { db.exec("ALTER TABLE marketplace_reviews ADD COLUMN organization_segment TEXT;"); } catch (e) {}
-try { db.exec("ALTER TABLE marketplace_reviews ADD COLUMN incident_volume_band TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE ace_events ADD COLUMN post_action_verification INTEGER DEFAULT 0;"); } catch (e) {}
 
 // Seed Default Organization
 const checkOrgs = db.prepare('SELECT COUNT(*) as count FROM organizations').get() as any;
